@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { signOut, useSession } from "next-auth/react"
 import {
   LayoutDashboard,
   Wrench,
@@ -12,6 +13,8 @@ import {
   Settings,
   Menu,
   X,
+  LogOut,
+  User,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -37,7 +40,30 @@ const menuItems = [
 ]
 
 export function MaintenanceDashboard() {
+  const { data: session } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/login" })
+  }
+
+  const getUserInitials = () => {
+    if (!session?.user?.name) return "U"
+    const names = session.user.name.split(" ")
+    if (names.length >= 2) {
+      return names[0][0] + names[1][0]
+    }
+    return names[0][0]
+  }
+
+  const getRoleName = (role: string) => {
+    const roles: Record<string, string> = {
+      ADMIN: "Administrador",
+      TECNICO: "Técnico",
+      CLIENTE: "Cliente"
+    }
+    return roles[role] || role
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -133,12 +159,15 @@ export function MaintenanceDashboard() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 pl-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">JM</AvatarFallback>
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {getUserInitials()}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="hidden text-left md:block">
-                    <p className="text-sm font-medium">Juan Martínez</p>
-                    <p className="text-xs text-muted-foreground">Administrador</p>
+                    <p className="text-sm font-medium">{session?.user?.name || "Usuario"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {session?.user?.role ? getRoleName(session.user.role) : ""}
+                    </p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -146,10 +175,19 @@ export function MaintenanceDashboard() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Perfil</DropdownMenuItem>
-                <DropdownMenuItem>Configuración</DropdownMenuItem>
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Configuración
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">Cerrar Sesión</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Cerrar Sesión
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
