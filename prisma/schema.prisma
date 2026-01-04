@@ -1,15 +1,141 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TECNICO
+  CLIENTE
+}
+
+enum EstadoEquipo {
+  ACTIVO
+  INACTIVO
+  EN_MANTENIMIENTO
+  DADO_DE_BAJA
+}
+
+enum TipoMantenimiento {
+  PREVENTIVO
+  CORRECTIVO
+}
+
+enum EstadoMantenimiento {
+  PROGRAMADO
+  EN_PROCESO
+  COMPLETADO
+  CANCELADO
+}
+
+model Empresa {
+  id        String    @id @default(cuid())
+  nombre    String
+  nit       String    @unique
+  contacto  String?
+  telefono  String?
+  email     String?
+  direccion String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  usuarios  User[]
+  equipos   Equipo[]
+
+  @@map("empresas")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nombre    String
+  role      Role     @default(CLIENTE)
+  empresaId String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  empresa              Empresa?         @relation(fields: [empresaId], references: [id])
+  mantenimientos       Mantenimiento[]  @relation("TecnicoMantenimientos")
+  historial            Historial[]
+
+  @@map("users")
+}
+
+model Equipo {
+  id          String       @id @default(cuid())
+  tipo        String
+  marca       String
+  modelo      String?
+  serial      String       @unique
+  estado      EstadoEquipo @default(ACTIVO)
+  ubicacion   String?
+  empresaId   String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  empresa        Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  mantenimientos Mantenimiento[]
+  historial      Historial[]
+
+  @@map("equipos")
+}
+
+model Mantenimiento {
+  id               String               @id @default(cuid())
+  equipoId         String
+  tecnicoId        String
+  tipo             TipoMantenimiento
+  estado           EstadoMantenimiento  @default(PROGRAMADO)
+  fechaProgramada  DateTime
+  fechaRealizada   DateTime?
+  descripcion      String               @db.Text
+  observaciones    String?              @db.Text
+  reporteUrl       String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  equipo     Equipo      @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  tecnico    User        @relation("TecnicoMantenimientos", fields: [tecnicoId], references: [id])
+  historial  Historial[]
+  alertas    Alerta[]
+
+  @@map("mantenimientos")
+}
+
+model Historial {
+  id                String    @id @default(cuid())
+  equipoId          String
+  mantenimientoId   String?
+  tecnicoId         String
+  fecha             DateTime  @default(now())
+  observaciones     String    @db.Text
+
+  equipo         Equipo         @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  mantenimiento  Mantenimiento? @relation(fields: [mantenimientoId], references: [id], onDelete: SetNull)
+  tecnico        User           @relation(fields: [tecnicoId], references: [id])
+
+  @@map("historial")
+}
+
+model Alerta {
+  id                String    @id @default(cuid())
+  mantenimientoId   String
+  tipo              String
+  mensaje           String    @db.Text
+  enviada           Boolean   @default(false)
+  fechaEnvio        DateTime?
+  createdAt         DateTime  @default(now())
+
+  mantenimiento Mantenimiento @relation(fields: [mantenimientoId], references: [id], onDelete: Cascade)
+
+  @@map("alertas")
 }

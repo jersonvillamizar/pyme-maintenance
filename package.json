@@ -9,6 +9,7 @@
     "zod": "^4.3.4"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6"
+    "@types/bcryptjs": "^2.4.6",
+    "dotenv": "^17.2.3"
   }
 }
