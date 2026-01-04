@@ -1,0 +1,84 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import {
+  LayoutDashboard,
+  Wrench,
+  ClipboardList,
+  BarChart3,
+  Users,
+  Settings,
+  Building2,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+  { icon: Building2, label: "Empresas", href: "/empresas" },
+  { icon: Wrench, label: "Equipos", href: "/equipos" },
+  { icon: ClipboardList, label: "Mantenimientos", href: "/mantenimientos" },
+  { icon: BarChart3, label: "Reportes", href: "/reportes" },
+  { icon: Users, label: "Usuarios", href: "/usuarios" },
+]
+
+export function Sidebar() {
+  const pathname = usePathname()
+
+  return (
+    <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border lg:static">
+      <div className="flex h-full flex-col">
+        {/* Logo */}
+        <div className="flex h-16 items-center gap-3 border-b border-border px-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Wrench className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold leading-tight text-foreground">MantenPro</h1>
+            <p className="text-xs text-muted-foreground">Sistema PYME</p>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 p-4">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Settings */}
+        <div className="border-t border-border p-4">
+          <Link
+            href="/configuracion"
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              pathname === "/configuracion"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            <Settings className="h-5 w-5" />
+            Configuración
+          </Link>
+        </div>
+      </div>
+    </aside>
+  )
+}
