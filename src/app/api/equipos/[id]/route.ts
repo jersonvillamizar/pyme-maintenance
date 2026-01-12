@@ -7,7 +7,7 @@ import { updateEquipoSchema } from "@/lib/validations/equipo"
 // GET /api/equipos/[id] - Obtener un equipo por ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -16,8 +16,10 @@ export async function GET(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
+    const { id } = await params
+
     const equipo = await prisma.equipo.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         empresa: {
           select: {
@@ -91,7 +93,7 @@ export async function GET(
 // PUT /api/equipos/[id] - Actualizar equipo
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -104,12 +106,14 @@ export async function PUT(
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const { id } = await params
+
     const body = await request.json()
     const validatedData = updateEquipoSchema.parse(body)
 
     // Verificar que el equipo existe
     const existingEquipo = await prisma.equipo.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingEquipo) {
@@ -157,7 +161,7 @@ export async function PUT(
     }
 
     const equipo = await prisma.equipo.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         empresa: {
@@ -206,7 +210,7 @@ export async function DELETE(
 
     // Verificar que el equipo existe
     const equipo = await prisma.equipo.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -239,7 +243,7 @@ export async function DELETE(
     }
 
     await prisma.equipo.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: "Equipo eliminado exitosamente" })

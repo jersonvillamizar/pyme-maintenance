@@ -7,7 +7,7 @@ import { updateUserSchema } from "@/lib/validations/user"
 // GET /api/usuarios/[id] - Obtener un usuario por ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -21,8 +21,10 @@ export async function GET(
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const { id } = await params
+
     const usuario = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         email: true,
@@ -81,7 +83,7 @@ export async function GET(
 // PUT /api/usuarios/[id] - Actualizar usuario
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -95,12 +97,14 @@ export async function PUT(
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const { id } = await params
+
     const body = await request.json()
     const validatedData = updateUserSchema.parse(body)
 
     // Verificar que el usuario existe
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingUser) {
@@ -147,7 +151,7 @@ export async function PUT(
     }
 
     const usuario = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       select: {
         id: true,
@@ -188,7 +192,7 @@ export async function PUT(
 // DELETE /api/usuarios/[id] - Eliminar usuario
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -202,9 +206,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const { id } = await params
+
     // Verificar que el usuario existe
     const usuario = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -245,7 +251,7 @@ export async function DELETE(
     }
 
     await prisma.user.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: "Usuario eliminado exitosamente" })

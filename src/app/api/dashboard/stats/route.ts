@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id
     const empresaId = session.user.empresaId
 
-    let equiposWhere: any = {}
-    let mantenimientosWhere: any = {}
+    let equiposWhere: Record<string, unknown> = {}
+    let mantenimientosWhere: Record<string, unknown> = {}
 
     if (userRole === "CLIENTE" && empresaId) {
       equiposWhere = { empresaId }
@@ -156,32 +156,44 @@ export async function GET(request: NextRequest) {
     const seisMesesAtras = new Date()
     seisMesesAtras.setMonth(seisMesesAtras.getMonth() - 6)
 
-    const mantenimientosPorMes = await prisma.mantenimiento.groupBy({
-      by: ["tipo"],
-      where: {
-        ...mantenimientosWhere,
-        fechaProgramada: {
-          gte: seisMesesAtras,
-        },
-      },
-      _count: true,
-    })
+    let mantenimientosParaGrafico: Array<{ mes: string; tipo: string; count: bigint }> = []
 
-    // Obtener mantenimientos agrupados por mes y tipo para el gráfico
-    const mantenimientosParaGrafico = await prisma.$queryRaw<
-      Array<{ mes: string; tipo: string; count: bigint }>
-    >`
-      SELECT
-        TO_CHAR(DATE_TRUNC('month', "fechaProgramada"), 'YYYY-MM') as mes,
-        tipo,
-        COUNT(*)::bigint as count
-      FROM "Mantenimiento"
-      WHERE "fechaProgramada" >= ${seisMesesAtras}
-      ${userRole === "CLIENTE" && empresaId ? prisma.$queryRaw`AND "equipoId" IN (SELECT id FROM "Equipo" WHERE "empresaId" = ${empresaId})` : prisma.$queryRaw``}
-      ${userRole === "TECNICO" ? prisma.$queryRaw`AND "tecnicoId" = ${userId}` : prisma.$queryRaw``}
-      GROUP BY DATE_TRUNC('month', "fechaProgramada"), tipo
-      ORDER BY mes ASC
-    `
+    if (userRole === "CLIENTE" && empresaId) {
+      mantenimientosParaGrafico = await prisma.$queryRaw`
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', "fechaProgramada"), 'YYYY-MM') as mes,
+          tipo,
+          COUNT(*)::bigint as count
+        FROM mantenimientos
+        WHERE "fechaProgramada" >= ${seisMesesAtras}
+        AND "equipoId" IN (SELECT id FROM equipos WHERE "empresaId" = ${empresaId})
+        GROUP BY DATE_TRUNC('month', "fechaProgramada"), tipo
+        ORDER BY mes ASC
+      `
+    } else if (userRole === "TECNICO") {
+      mantenimientosParaGrafico = await prisma.$queryRaw`
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', "fechaProgramada"), 'YYYY-MM') as mes,
+          tipo,
+          COUNT(*)::bigint as count
+        FROM mantenimientos
+        WHERE "fechaProgramada" >= ${seisMesesAtras}
+        AND "tecnicoId" = ${userId}
+        GROUP BY DATE_TRUNC('month', "fechaProgramada"), tipo
+        ORDER BY mes ASC
+      `
+    } else {
+      mantenimientosParaGrafico = await prisma.$queryRaw`
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', "fechaProgramada"), 'YYYY-MM') as mes,
+          tipo,
+          COUNT(*)::bigint as count
+        FROM mantenimientos
+        WHERE "fechaProgramada" >= ${seisMesesAtras}
+        GROUP BY DATE_TRUNC('month', "fechaProgramada"), tipo
+        ORDER BY mes ASC
+      `
+    }
 
     // Calcular cambios porcentuales
     const cambioCompletados = completadosMesAnterior > 0
@@ -194,16 +206,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalEquipos,
-      equiposPorEstado: equiposPorEstado.reduce((acc, item) => {
+      equiposPorEstado: equiposPorEstado.reduce((acc: Record<string, number>, item: { estado: string; _count: number }) => {
         acc[item.estado] = item._count
         return acc
       }, {} as Record<string, number>),
       totalMantenimientos,
-      mantenimientosPorEstado: mantenimientosPorEstado.reduce((acc, item) => {
+      mantenimientosPorEstado: mantenimientosPorEstado.reduce((acc: Record<string, number>, item: { estado: string; _count: number }) => {
         acc[item.estado] = item._count
         return acc
       }, {} as Record<string, number>),
-      mantenimientosPorTipo: mantenimientosPorTipo.reduce((acc, item) => {
+      mantenimientosPorTipo: mantenimientosPorTipo.reduce((acc: Record<string, number>, item: { tipo: string; _count: number }) => {
         acc[item.tipo] = item._count
         return acc
       }, {} as Record<string, number>),

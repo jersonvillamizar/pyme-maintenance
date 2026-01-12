@@ -7,7 +7,7 @@ import { updateEmpresaSchema } from "@/lib/validations/empresa"
 // GET /api/empresas/[id] - Obtener una empresa por ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -16,8 +16,10 @@ export async function GET(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
+    const { id } = await params
+
     const empresa = await prisma.empresa.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         usuarios: {
           select: {
@@ -59,7 +61,7 @@ export async function GET(
 // PUT /api/empresas/[id] - Actualizar empresa
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -72,12 +74,14 @@ export async function PUT(
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const { id } = await params
+
     const body = await request.json()
     const validatedData = updateEmpresaSchema.parse(body)
 
     // Verificar que la empresa existe
     const existingEmpresa = await prisma.empresa.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingEmpresa) {
@@ -102,7 +106,7 @@ export async function PUT(
     }
 
     const empresa = await prisma.empresa.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
     })
 
@@ -126,7 +130,7 @@ export async function PUT(
 // DELETE /api/empresas/[id] - Eliminar empresa
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -139,9 +143,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const { id } = await params
+
     // Verificar que la empresa existe
     const empresa = await prisma.empresa.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -174,7 +180,7 @@ export async function DELETE(
     }
 
     await prisma.empresa.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: "Empresa eliminada exitosamente" })
