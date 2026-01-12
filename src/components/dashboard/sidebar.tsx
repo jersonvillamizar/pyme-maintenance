@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -10,6 +11,7 @@ import {
   Users,
   Settings,
   Building2,
+  Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -18,12 +20,33 @@ const menuItems = [
   { icon: Building2, label: "Empresas", href: "/empresas" },
   { icon: Wrench, label: "Equipos", href: "/equipos" },
   { icon: ClipboardList, label: "Mantenimientos", href: "/mantenimientos" },
+  { icon: Bell, label: "Alertas", href: "/alertas", badge: true },
   { icon: BarChart3, label: "Reportes", href: "/reportes" },
   { icon: Users, label: "Usuarios", href: "/usuarios" },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [alertasCount, setAlertasCount] = useState(0)
+
+  useEffect(() => {
+    fetchAlertasCount()
+    // Actualizar cada 30 segundos
+    const interval = setInterval(fetchAlertasCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchAlertasCount = async () => {
+    try {
+      const response = await fetch("/api/alertas")
+      if (response.ok) {
+        const data = await response.json()
+        setAlertasCount(data.contadores.total)
+      }
+    } catch (error) {
+      console.error("Error al cargar alertas:", error)
+    }
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border lg:static">
@@ -44,6 +67,7 @@ export function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+            const showBadge = item.badge && alertasCount > 0
 
             return (
               <Link
@@ -58,6 +82,11 @@ export function Sidebar() {
               >
                 <Icon className="h-5 w-5" />
                 {item.label}
+                {showBadge && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground">
+                    {alertasCount > 99 ? "99+" : alertasCount}
+                  </span>
+                )}
               </Link>
             )
           })}
