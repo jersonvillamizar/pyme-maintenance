@@ -3,11 +3,20 @@
 import { useState, useEffect } from "react"
 import { Header } from "@/components/dashboard/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { MetricCard } from "@/components/metric-card"
 import { MaintenanceChart } from "@/components/maintenance-chart"
 import { MaintenanceTable } from "@/components/maintenance-table"
-import { Wrench, ClipboardList, BarChart3, Bell } from "lucide-react"
+import { Wrench, ClipboardList, BarChart3, Bell, FileDown, FileSpreadsheet } from "lucide-react"
 import { toast } from "sonner"
+import { exportEstadisticasToExcel } from "@/lib/excel-export"
+import { exportEstadisticasToPDF } from "@/lib/pdf-export"
 
 interface DashboardStats {
   totalEquipos: number
@@ -49,6 +58,64 @@ export default function DashboardPage() {
       console.error(error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleExportExcel = () => {
+    if (!stats) {
+      toast.error("No hay datos para exportar")
+      return
+    }
+
+    try {
+      const dataToExport = {
+        totalEquipos: stats.totalEquipos,
+        equiposPorEstado: Object.entries(stats.equiposPorEstado).map(([estado, cantidad]) => ({
+          estado,
+          cantidad,
+        })),
+        totalMantenimientos: stats.totalMantenimientos,
+        mantenimientosPorEstado: Object.entries(stats.mantenimientosPorEstado).map(
+          ([estado, cantidad]) => ({ estado, cantidad })
+        ),
+        mantenimientosPorMes: chartData.map((item) => ({
+          mes: item.mes,
+          cantidad: item.preventivo + item.correctivo,
+        })),
+      }
+      exportEstadisticasToExcel(dataToExport, "estadisticas_dashboard")
+      toast.success("Estadísticas exportadas a Excel")
+    } catch (error) {
+      toast.error("Error al exportar a Excel")
+    }
+  }
+
+  const handleExportPDF = () => {
+    if (!stats) {
+      toast.error("No hay datos para exportar")
+      return
+    }
+
+    try {
+      const dataToExport = {
+        totalEquipos: stats.totalEquipos,
+        equiposPorEstado: Object.entries(stats.equiposPorEstado).map(([estado, cantidad]) => ({
+          estado,
+          cantidad,
+        })),
+        totalMantenimientos: stats.totalMantenimientos,
+        mantenimientosPorEstado: Object.entries(stats.mantenimientosPorEstado).map(
+          ([estado, cantidad]) => ({ estado, cantidad })
+        ),
+        mantenimientosPorMes: chartData.map((item) => ({
+          mes: item.mes,
+          cantidad: item.preventivo + item.correctivo,
+        })),
+      }
+      exportEstadisticasToPDF(dataToExport)
+      toast.success("Estadísticas exportadas a PDF")
+    } catch (error) {
+      toast.error("Error al exportar a PDF")
     }
   }
 
@@ -115,6 +182,29 @@ export default function DashboardPage() {
         title="Dashboard"
         description="Resumen general del sistema"
       />
+
+      <div className="border-b border-border bg-card px-6 py-4">
+        <div className="flex items-center justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileDown className="mr-2 h-4 w-4" />
+                Exportar Estadísticas
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportExcel}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Exportar a Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF}>
+                <FileDown className="mr-2 h-4 w-4" />
+                Exportar a PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       <main className="flex-1 overflow-y-auto p-6">
         <div className="mx-auto max-w-7xl space-y-6">

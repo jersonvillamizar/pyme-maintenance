@@ -12,6 +12,7 @@ import {
   Settings,
   Building2,
   Bell,
+  History,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -20,8 +21,8 @@ const menuItems = [
   { icon: Building2, label: "Empresas", href: "/empresas" },
   { icon: Wrench, label: "Equipos", href: "/equipos" },
   { icon: ClipboardList, label: "Mantenimientos", href: "/mantenimientos" },
+  { icon: History, label: "Historial", href: "/historial" },
   { icon: Bell, label: "Alertas", href: "/alertas", badge: true },
-  { icon: BarChart3, label: "Reportes", href: "/reportes" },
   { icon: Users, label: "Usuarios", href: "/usuarios" },
 ]
 

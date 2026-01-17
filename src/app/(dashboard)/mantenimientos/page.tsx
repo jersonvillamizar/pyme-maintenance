@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Wrench, Filter } from "lucide-react"
+import { Plus, Wrench, Filter, FileDown, FileSpreadsheet } from "lucide-react"
 import { Header } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,11 +12,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { MantenimientosTable } from "@/components/mantenimientos/mantenimientos-table"
 import { MantenimientoForm } from "@/components/mantenimientos/mantenimiento-form"
 import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import type { MantenimientoInput } from "@/lib/validations/mantenimiento"
+import { exportMantenimientosToExcel } from "@/lib/excel-export"
+import { exportMantenimientosToPDF } from "@/lib/pdf-export"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 interface Mantenimiento {
   id: string
@@ -237,6 +247,48 @@ export default function MantenimientosPage() {
 
   const canCreate = session?.user?.role === "ADMIN" || session?.user?.role === "CLIENTE"
 
+  const handleExportExcel = () => {
+    try {
+      const dataToExport = mantenimientos.map((mant) => ({
+        tipo: mant.tipo,
+        estado: mant.estado,
+        equipo: `${mant.equipo.tipo} - ${mant.equipo.marca} ${mant.equipo.modelo || ""} (${mant.equipo.serial})`,
+        empresa: mant.equipo.empresa.nombre,
+        tecnico: mant.tecnico.nombre,
+        fechaProgramada: format(new Date(mant.fechaProgramada), "dd/MM/yyyy", { locale: es }),
+        fechaRealizada: mant.fechaRealizada
+          ? format(new Date(mant.fechaRealizada), "dd/MM/yyyy", { locale: es })
+          : null,
+        descripcion: mant.descripcion,
+        observaciones: mant.observaciones,
+      }))
+      exportMantenimientosToExcel(dataToExport, "mantenimientos")
+      toast.success("Mantenimientos exportados a Excel")
+    } catch (error) {
+      toast.error("Error al exportar a Excel")
+    }
+  }
+
+  const handleExportPDF = () => {
+    try {
+      const dataToExport = mantenimientos.map((mant) => ({
+        tipo: mant.tipo,
+        estado: mant.estado,
+        equipo: `${mant.equipo.tipo} - ${mant.equipo.marca}`,
+        empresa: mant.equipo.empresa.nombre,
+        tecnico: mant.tecnico.nombre,
+        fechaProgramada: format(new Date(mant.fechaProgramada), "dd/MM/yyyy", { locale: es }),
+        fechaRealizada: mant.fechaRealizada
+          ? format(new Date(mant.fechaRealizada), "dd/MM/yyyy", { locale: es })
+          : null,
+      }))
+      exportMantenimientosToPDF(dataToExport)
+      toast.success("Mantenimientos exportados a PDF")
+    } catch (error) {
+      toast.error("Error al exportar a PDF")
+    }
+  }
+
   return (
     <>
       <Header
@@ -306,12 +358,32 @@ export default function MantenimientosPage() {
               )}
             </div>
           </div>
-          {canCreate && (
-            <Button onClick={() => setFormOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Mantenimiento
-            </Button>
-          )}
+          <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Exportar a Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar a PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {canCreate && (
+              <Button onClick={() => setFormOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Mantenimiento
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 

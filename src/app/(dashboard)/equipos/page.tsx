@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { Plus, Wrench, Filter } from "lucide-react"
+import { Plus, Wrench, Filter, FileDown, FileSpreadsheet } from "lucide-react"
 import { Header } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,10 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { EquiposTable } from "@/components/equipos/equipos-table"
 import { EquipoForm } from "@/components/equipos/equipo-form"
 import { toast } from "sonner"
 import type { EquipoInput } from "@/lib/validations/equipo"
+import { exportEquiposToExcel } from "@/lib/excel-export"
+import { exportEquiposToPDF } from "@/lib/pdf-export"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 interface Equipo {
   id: string
@@ -184,6 +194,42 @@ export default function EquiposPage() {
   const canDelete = session?.user?.role === "ADMIN"
   const isCliente = session?.user?.role === "CLIENTE"
 
+  const handleExportExcel = () => {
+    try {
+      const dataToExport = equipos.map((equipo) => ({
+        tipo: equipo.tipo,
+        marca: equipo.marca,
+        modelo: equipo.modelo,
+        serial: equipo.serial,
+        estado: equipo.estado,
+        ubicacion: equipo.ubicacion,
+        empresa: equipo.empresa.nombre,
+      }))
+      exportEquiposToExcel(dataToExport, "equipos")
+      toast.success("Equipos exportados a Excel")
+    } catch (error) {
+      toast.error("Error al exportar a Excel")
+    }
+  }
+
+  const handleExportPDF = () => {
+    try {
+      const dataToExport = equipos.map((equipo) => ({
+        tipo: equipo.tipo,
+        marca: equipo.marca,
+        modelo: equipo.modelo,
+        serial: equipo.serial,
+        estado: equipo.estado,
+        ubicacion: equipo.ubicacion,
+        empresa: equipo.empresa.nombre,
+      }))
+      exportEquiposToPDF(dataToExport)
+      toast.success("Equipos exportados a PDF")
+    } catch (error) {
+      toast.error("Error al exportar a PDF")
+    }
+  }
+
   return (
     <>
       <Header
@@ -225,12 +271,32 @@ export default function EquiposPage() {
               </Select>
             </div>
           </div>
-          {canCreate && (
-            <Button onClick={() => setFormOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Equipo
-            </Button>
-          )}
+          <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Exportar a Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar a PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {canCreate && (
+              <Button onClick={() => setFormOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Equipo
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
