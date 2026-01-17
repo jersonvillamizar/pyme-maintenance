@@ -152,6 +152,105 @@ export async function GET(_request: NextRequest) {
       },
     })
 
+    // Tiempo promedio de resolución (en días)
+    const mantenimientosCompletados = await prisma.mantenimiento.findMany({
+      where: {
+        ...mantenimientosWhere,
+        estado: "COMPLETADO",
+        fechaRealizada: { not: null },
+      },
+      select: {
+        fechaProgramada: true,
+        fechaRealizada: true,
+      },
+    })
+
+    let tiempoPromedioResolucion = 0
+    if (mantenimientosCompletados.length > 0) {
+      const totalDias = mantenimientosCompletados.reduce((acc, m) => {
+        if (m.fechaRealizada) {
+          const diffTime = m.fechaRealizada.getTime() - m.fechaProgramada.getTime()
+          const diffDays = diffTime / (1000 * 60 * 60 * 24)
+          return acc + diffDays
+        }
+        return acc
+      }, 0)
+      tiempoPromedioResolucion = Math.round((totalDias / mantenimientosCompletados.length) * 10) / 10
+    }
+
+    // Fallas recurrentes por equipo (equipos con más mantenimientos correctivos)
+    let fallasRecurrentesQuery: Array<{ equipoId: string; count: bigint }> = []
+
+    if (userRole === "CLIENTE" && empresaId) {
+      fallasRecurrentesQuery = await prisma.$queryRaw`
+        SELECT "equipoId", COUNT(*)::bigint as count
+        FROM mantenimientos
+        WHERE tipo = 'CORRECTIVO'
+        AND "equipoId" IN (SELECT id FROM equipos WHERE "empresaId" = ${empresaId})
+        GROUP BY "equipoId"
+        HAVING COUNT(*) >= 2
+        ORDER BY count DESC
+        LIMIT 5
+      `
+    } else if (userRole === "TECNICO") {
+      fallasRecurrentesQuery = await prisma.$queryRaw`
+        SELECT "equipoId", COUNT(*)::bigint as count
+        FROM mantenimientos
+        WHERE tipo = 'CORRECTIVO'
+        AND "tecnicoId" = ${userId}
+        GROUP BY "equipoId"
+        HAVING COUNT(*) >= 2
+        ORDER BY count DESC
+        LIMIT 5
+      `
+    } else {
+      fallasRecurrentesQuery = await prisma.$queryRaw`
+        SELECT "equipoId", COUNT(*)::bigint as count
+        FROM mantenimientos
+        WHERE tipo = 'CORRECTIVO'
+        GROUP BY "equipoId"
+        HAVING COUNT(*) >= 2
+        ORDER BY count DESC
+        LIMIT 5
+      `
+    }
+
+    // Obtener detalles de los equipos con fallas recurrentes
+    const equiposConFallas = await prisma.equipo.findMany({
+      where: {
+        id: {
+          in: fallasRecurrentesQuery.map(f => f.equipoId),
+        },
+      },
+      select: {
+        id: true,
+        tipo: true,
+        marca: true,
+        modelo: true,
+        serial: true,
+        empresa: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+    })
+
+    const fallasRecurrentes = fallasRecurrentesQuery.map(f => {
+      const equipo = equiposConFallas.find(e => e.id === f.equipoId)
+      return {
+        equipoId: f.equipoId,
+        cantidadFallas: Number(f.count),
+        equipo: equipo ? {
+          tipo: equipo.tipo,
+          marca: equipo.marca,
+          modelo: equipo.modelo,
+          serial: equipo.serial,
+          empresa: equipo.empresa?.nombre || "N/A",
+        } : null,
+      }
+    })
+
     // Mantenimientos por mes (últimos 6 meses)
     const seisMesesAtras = new Date()
     seisMesesAtras.setMonth(seisMesesAtras.getMonth() - 6)
@@ -230,6 +329,8 @@ export async function GET(_request: NextRequest) {
         tipo: item.tipo,
         count: Number(item.count),
       })),
+      tiempoPromedioResolucion,
+      fallasRecurrentes,
     })
   } catch (error) {
     console.error("Error al obtener estadísticas:", error)

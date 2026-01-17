@@ -13,10 +13,22 @@ import {
 import { MetricCard } from "@/components/metric-card"
 import { MaintenanceChart } from "@/components/maintenance-chart"
 import { MaintenanceTable } from "@/components/maintenance-table"
-import { Wrench, ClipboardList, BarChart3, Bell, FileDown, FileSpreadsheet } from "lucide-react"
+import { Wrench, ClipboardList, BarChart3, Bell, FileDown, FileSpreadsheet, Clock, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { exportEstadisticasToExcel } from "@/lib/excel-export"
 import { exportEstadisticasToPDF } from "@/lib/pdf-export"
+
+interface FallaRecurrente {
+  equipoId: string
+  cantidadFallas: number
+  equipo: {
+    tipo: string
+    marca: string
+    modelo: string | null
+    serial: string
+    empresa: string
+  } | null
+}
 
 interface DashboardStats {
   totalEquipos: number
@@ -35,6 +47,8 @@ interface DashboardStats {
     tipo: string
     count: number
   }>
+  tiempoPromedioResolucion: number
+  fallasRecurrentes: FallaRecurrente[]
 }
 
 export default function DashboardPage() {
@@ -209,7 +223,7 @@ export default function DashboardPage() {
       <main className="flex-1 overflow-y-auto p-6">
         <div className="mx-auto max-w-7xl space-y-6">
           {/* Metric Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <MetricCard
               title="Total Equipos"
               value={stats.totalEquipos.toString()}
@@ -218,14 +232,14 @@ export default function DashboardPage() {
               icon={Wrench}
             />
             <MetricCard
-              title="Mantenimientos Pendientes"
+              title="Pendientes"
               value={stats.mantenimientosPendientes.toString()}
               change={`${stats.cambioPendientes > 0 ? "+" : ""}${stats.cambioPendientes}%`}
               trend={stats.cambioPendientes > 0 ? "up" : "down"}
               icon={ClipboardList}
             />
             <MetricCard
-              title="Completados Este Mes"
+              title="Completados (Mes)"
               value={stats.completadosEsteMes.toString()}
               change={`${stats.cambioCompletados > 0 ? "+" : ""}${stats.cambioCompletados}%`}
               trend={stats.cambioCompletados > 0 ? "up" : "down"}
@@ -237,6 +251,20 @@ export default function DashboardPage() {
               change={stats.equiposCriticos > 0 ? "Requieren atención" : "Todo bien"}
               trend={stats.equiposCriticos > 0 ? "critical" : "down"}
               icon={Bell}
+            />
+            <MetricCard
+              title="Tiempo Promedio"
+              value={`${stats.tiempoPromedioResolucion} días`}
+              change="Resolución de mant."
+              trend={stats.tiempoPromedioResolucion <= 3 ? "up" : stats.tiempoPromedioResolucion <= 7 ? "down" : "critical"}
+              icon={Clock}
+            />
+            <MetricCard
+              title="Fallas Recurrentes"
+              value={stats.fallasRecurrentes.length.toString()}
+              change={stats.fallasRecurrentes.length > 0 ? "Equipos con +2 fallas" : "Sin fallas recurrentes"}
+              trend={stats.fallasRecurrentes.length > 0 ? "critical" : "up"}
+              icon={AlertTriangle}
             />
           </div>
 
@@ -251,16 +279,60 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Recent Maintenance Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground">Próximos Mantenimientos</CardTitle>
-              <p className="text-sm text-muted-foreground">Mantenimientos programados y en proceso</p>
-            </CardHeader>
-            <CardContent>
-              <MaintenanceTable data={stats.proximosMantenimientos} />
-            </CardContent>
-          </Card>
+          {/* Two column layout for tables */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Recent Maintenance Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-foreground">Próximos Mantenimientos</CardTitle>
+                <p className="text-sm text-muted-foreground">Mantenimientos programados y en proceso</p>
+              </CardHeader>
+              <CardContent>
+                <MaintenanceTable data={stats.proximosMantenimientos} />
+              </CardContent>
+            </Card>
+
+            {/* Fallas Recurrentes Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-foreground flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Fallas Recurrentes por Equipo
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Equipos con 2 o más mantenimientos correctivos</p>
+              </CardHeader>
+              <CardContent>
+                {stats.fallasRecurrentes.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    No hay equipos con fallas recurrentes
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {stats.fallasRecurrentes.map((falla) => (
+                      <div
+                        key={falla.equipoId}
+                        className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
+                      >
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">
+                            {falla.equipo?.tipo} {falla.equipo?.marca} {falla.equipo?.modelo || ""}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Serial: {falla.equipo?.serial} | {falla.equipo?.empresa}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-destructive/10 px-3 py-1 text-sm font-semibold text-destructive">
+                            {falla.cantidadFallas} fallas
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </>
