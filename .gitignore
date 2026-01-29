@@ -28,8 +28,6 @@ next-env.d.ts
 /generated/prisma
 
 # Scripts de desarrollo temporales
-scripts/dev/
-scripts/*.js
 !scripts/README.md
 
 # Uploads (archivos subidos por usuarios)
