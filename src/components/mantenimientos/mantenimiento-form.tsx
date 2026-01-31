@@ -45,8 +45,9 @@ import {
 
 interface MantenimientoFormProps {
   mantenimiento?: Mantenimiento
-  equipos: Array<{ id: string; tipo: string; marca: string; modelo: string | null; serial: string }>
+  equipos: Array<{ id: string; tipo: string; marca: string; modelo: string | null; serial: string; empresaId: string; estado: string }>
   tecnicos: Array<{ id: string; nombre: string; email: string }>
+  empresas: Array<{ id: string; nombre: string }>
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (data: MantenimientoInput) => Promise<void>
@@ -57,6 +58,7 @@ export function MantenimientoForm({
   mantenimiento,
   equipos,
   tecnicos,
+  empresas,
   open,
   onOpenChange,
   onSubmit,
@@ -66,6 +68,7 @@ export function MantenimientoForm({
   const [fechaRealizadaOpen, setFechaRealizadaOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<string>("")
 
   const form = useForm<MantenimientoInput>({
     resolver: zodResolver(mantenimientoSchema),
@@ -97,6 +100,7 @@ export function MantenimientoForm({
         observaciones: mantenimiento.observaciones,
         reporteUrl: mantenimiento.reporteUrl,
       })
+      setSelectedEmpresaId(mantenimiento.equipo.empresa.id)
     } else {
       form.reset({
         equipoId: "",
@@ -109,8 +113,9 @@ export function MantenimientoForm({
         observaciones: null,
         reporteUrl: null,
       })
+      setSelectedEmpresaId("")
     }
-  }, [mantenimiento, form])
+  }, [mantenimiento, form, open])
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -166,7 +171,14 @@ export function MantenimientoForm({
     await onSubmit(data)
     form.reset()
     setSelectedFile(null)
+    setSelectedEmpresaId("")
   }
+
+  const filteredEquipos = equipos.filter((equipo) => {
+    const belongsToEmpresa = !selectedEmpresaId || equipo.empresaId === selectedEmpresaId
+    const isAvailable = equipo.estado !== "EN_MANTENIMIENTO" || (mantenimiento && equipo.id === mantenimiento.equipoId)
+    return belongsToEmpresa && isAvailable
+  })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,6 +197,31 @@ export function MantenimientoForm({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
+              <FormItem>
+                <FormLabel>Empresa</FormLabel>
+                <Select
+                  value={selectedEmpresaId}
+                  onValueChange={(value) => {
+                    setSelectedEmpresaId(value)
+                    form.setValue("equipoId", "")
+                  }}
+                  disabled={!!mantenimiento}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una empresa" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {empresas.map((empresa) => (
+                      <SelectItem key={empresa.id} value={empresa.id}>
+                        {empresa.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+
               <FormField
                 control={form.control}
                 name="equipoId"
@@ -193,16 +230,16 @@ export function MantenimientoForm({
                     <FormLabel>Equipo</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      disabled={!!mantenimiento}
+                      value={field.value}
+                      disabled={!!mantenimiento || !selectedEmpresaId}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un equipo" />
+                          <SelectValue placeholder={selectedEmpresaId ? "Selecciona un equipo" : "Primero selecciona empresa"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {equipos.map((equipo) => (
+                        {filteredEquipos.map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.tipo} - {equipo.marca} {equipo.modelo || ""} (S/N: {equipo.serial})
                           </SelectItem>
@@ -213,35 +250,34 @@ export function MantenimientoForm({
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="tecnicoId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Técnico Asignado</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un técnico" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {tecnicos.map((tecnico) => (
-                          <SelectItem key={tecnico.id} value={tecnico.id}>
-                            {tecnico.nombre} ({tecnico.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+            <FormField
+              control={form.control}
+              name="tecnicoId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Técnico Asignado</FormLabel>
+                   <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un técnico" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {tecnicos.map((tecnico) => (
+                        <SelectItem key={tecnico.id} value={tecnico.id}>
+                          {tecnico.nombre} ({tecnico.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

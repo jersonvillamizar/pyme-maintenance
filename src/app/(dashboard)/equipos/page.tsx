@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Plus, Wrench, Filter, FileDown, FileSpreadsheet } from "lucide-react"
+import { Plus, Wrench, Filter, FileDown, FileSpreadsheet, Search, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { Header } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,8 +27,6 @@ import { toast } from "sonner"
 import type { EquipoInput } from "@/lib/validations/equipo"
 import { exportEquiposToExcel } from "@/lib/excel-export"
 import { exportEquiposToPDF } from "@/lib/pdf-export"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
 
 interface Equipo {
   id: string
@@ -55,6 +55,8 @@ interface Empresa {
 
 export default function EquiposPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [equipos, setEquipos] = useState<Equipo[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,6 +65,10 @@ export default function EquiposPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [filterEmpresa, setFilterEmpresa] = useState<string>("all")
   const [filterEstado, setFilterEstado] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState<string>("")
+
+  // Filtro por ID desde URL (viene de alertas)
+  const filterId = searchParams.get("id")
 
   useEffect(() => {
     fetchEmpresas()
@@ -85,8 +91,10 @@ export default function EquiposPage() {
     try {
       setLoading(true)
       const params = new URLSearchParams()
+      if (filterId) params.append("id", filterId)
       if (filterEmpresa !== "all") params.append("empresaId", filterEmpresa)
       if (filterEstado !== "all") params.append("estado", filterEstado)
+      if (searchQuery) params.append("search", searchQuery)
 
       const response = await fetch(`/api/equipos?${params.toString()}`)
       if (!response.ok) throw new Error("Error al cargar equipos")
@@ -102,8 +110,11 @@ export default function EquiposPage() {
   }
 
   useEffect(() => {
-    fetchEquipos()
-  }, [filterEmpresa, filterEstado])
+    const timer = setTimeout(() => {
+      fetchEquipos()
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filterEmpresa, filterEstado, searchQuery, filterId])
 
   const handleCreate = async (data: EquipoInput) => {
     try {
@@ -194,6 +205,10 @@ export default function EquiposPage() {
   const canDelete = session?.user?.role === "ADMIN"
   const isCliente = session?.user?.role === "CLIENTE"
 
+  const clearFilterId = () => {
+    router.push("/equipos")
+  }
+
   const handleExportExcel = () => {
     try {
       const dataToExport = equipos.map((equipo) => ({
@@ -239,9 +254,19 @@ export default function EquiposPage() {
 
       <div className="border-b border-border bg-card px-6 py-4">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por tipo, marca o serial..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="h-6 w-px bg-border mx-1 hidden md:block" />
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {!isCliente && (
                 <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
                   <SelectTrigger className="w-[200px]">
@@ -301,7 +326,26 @@ export default function EquiposPage() {
       </div>
 
       <main className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-7xl space-y-4">
+          {filterId && (
+            <div className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-orange-600" />
+                <span className="text-sm font-medium text-orange-800">
+                  Mostrando equipo específico desde alertas
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilterId}
+                className="text-orange-700 hover:text-orange-900 hover:bg-orange-100"
+              >
+                <X className="mr-1 h-4 w-4" />
+                Ver todos
+              </Button>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">

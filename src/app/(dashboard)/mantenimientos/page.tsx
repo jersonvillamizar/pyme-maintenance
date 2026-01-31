@@ -38,6 +38,8 @@ interface Equipo {
   marca: string
   modelo: string | null
   serial: string
+  empresaId: string
+  estado: string
 }
 
 interface Tecnico {
@@ -444,6 +446,7 @@ export default function MantenimientosPage() {
         mantenimiento={editingMantenimiento}
         equipos={equipos}
         tecnicos={tecnicos}
+        empresas={empresas}
         open={formOpen}
         onOpenChange={handleFormOpenChange}
         onSubmit={editingMantenimiento ? handleUpdate : handleCreate}

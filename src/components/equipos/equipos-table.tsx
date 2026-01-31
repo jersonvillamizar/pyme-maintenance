@@ -39,6 +39,7 @@ interface Equipo {
   serial: string
   estado: "ACTIVO" | "INACTIVO" | "EN_MANTENIMIENTO" | "DADO_DE_BAJA"
   ubicacion: string | null
+  empresaId: string
   empresa: {
     id: string
     nombre: string

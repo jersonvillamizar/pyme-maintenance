@@ -212,13 +212,22 @@ export default function AlertasPage() {
                                 <p className="text-xs text-muted-foreground">
                                   {format(new Date(alerta.fecha), "dd MMM yyyy, HH:mm", { locale: es })}
                                 </p>
-                                {alerta.mantenimiento && (
-                                  <Link href={`/mantenimientos?id=${alerta.mantenimiento.id}`}>
-                                    <Button variant="outline" size="sm">
-                                      Ver Mantenimiento
-                                    </Button>
-                                  </Link>
-                                )}
+                                <div className="flex gap-2">
+                                  {alerta.mantenimiento && (
+                                    <Link href={`/mantenimientos?id=${alerta.mantenimiento.id}`}>
+                                      <Button variant="outline" size="sm">
+                                        Ver Mantenimiento
+                                      </Button>
+                                    </Link>
+                                  )}
+                                  {alerta.equipo && (
+                                    <Link href={`/equipos?id=${alerta.equipo.id}`}>
+                                      <Button variant="outline" size="sm">
+                                        Ver Equipo
+                                      </Button>
+                                    </Link>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>

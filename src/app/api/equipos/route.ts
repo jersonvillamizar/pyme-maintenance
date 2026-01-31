@@ -14,25 +14,49 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
     const empresaId = searchParams.get("empresaId")
     const estado = searchParams.get("estado")
+    const search = searchParams.get("search")
 
-    const where: any = {}
+    const andFilters: any[] = []
+
+    // Filtro por ID específico (desde alertas)
+    if (id) {
+      andFilters.push({ id })
+    }
 
     // Filtrar por empresa si se proporciona
     if (empresaId) {
-      where.empresaId = empresaId
+      andFilters.push({ empresaId })
     }
 
     // Filtrar por estado si se proporciona
     if (estado) {
-      where.estado = estado
+      andFilters.push({ estado })
+    }
+
+    // Búsqueda multi-término por tipo, marca, serial o modelo
+    if (search) {
+      const searchTerms = search.split(/\s+/).filter(term => term.length > 0)
+      searchTerms.forEach(term => {
+        andFilters.push({
+          OR: [
+            { tipo: { contains: term, mode: 'insensitive' } },
+            { marca: { contains: term, mode: 'insensitive' } },
+            { serial: { contains: term, mode: 'insensitive' } },
+            { modelo: { contains: term, mode: 'insensitive' } },
+          ]
+        })
+      })
     }
 
     // Si es cliente, solo ver equipos de su empresa
     if (session.user.role === "CLIENTE" && session.user.empresaId) {
-      where.empresaId = session.user.empresaId
+      andFilters.push({ empresaId: session.user.empresaId })
     }
+
+    const where = andFilters.length > 0 ? { AND: andFilters } : {}
 
     const equipos = await prisma.equipo.findMany({
       where,
