@@ -374,6 +374,7 @@ export function MantenimientoForm({
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
+                          className="rounded-md border p-4 w-[320px]"
                           selected={field.value ? new Date(field.value.includes('T') ? field.value : field.value + "T00:00:00") : undefined}
                           onSelect={(date) => {
                             field.onChange(date ? format(date, "yyyy-MM-dd") : "")
@@ -416,6 +417,7 @@ export function MantenimientoForm({
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
+                          className="rounded-md border p-4 w-[320px]"
                           selected={field.value ? new Date(field.value.includes('T') ? field.value : field.value + "T00:00:00") : undefined}
                           onSelect={(date) => {
                             field.onChange(date ? format(date, "yyyy-MM-dd") : null)
