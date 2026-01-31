@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Wrench, Filter, FileDown, FileSpreadsheet, Search } from "lucide-react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { Plus, Wrench, Filter, FileDown, FileSpreadsheet, Search, X } from "lucide-react"
 import { Header } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,6 +53,8 @@ interface Empresa {
 
 export default function MantenimientosPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [mantenimientos, setMantenimientos] = useState<Mantenimiento[]>([])
   const [equipos, setEquipos] = useState<Equipo[]>([])
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([])
@@ -60,6 +63,9 @@ export default function MantenimientosPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingMantenimiento, setEditingMantenimiento] = useState<Mantenimiento | undefined>()
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Filtro por ID desde URL (viene de alertas)
+  const filterId = searchParams.get("id")
 
   // Filtros
   const [filterEstado, setFilterEstado] = useState<string>("all")
@@ -80,7 +86,7 @@ export default function MantenimientosPage() {
       fetchMantenimientos()
     }, 500)
     return () => clearTimeout(timer)
-  }, [filterEstado, filterTipo, filterTecnico, filterEmpresa, searchQuery])
+  }, [filterEstado, filterTipo, filterTecnico, filterEmpresa, searchQuery, filterId])
 
   const fetchEmpresas = async () => {
     try {
@@ -121,6 +127,7 @@ export default function MantenimientosPage() {
     try {
       setLoading(true)
       const params = new URLSearchParams()
+      if (filterId) params.append("id", filterId)
       if (filterEstado !== "all") params.append("estado", filterEstado)
       if (filterTipo !== "all") params.append("tipo", filterTipo)
       if (filterTecnico !== "all") params.append("tecnicoId", filterTecnico)
@@ -225,6 +232,10 @@ export default function MantenimientosPage() {
   }
 
   const canCreate = session?.user?.role === "ADMIN" || session?.user?.role === "CLIENTE"
+
+  const clearFilterId = () => {
+    router.push("/mantenimientos")
+  }
 
   const handleExportExcel = () => {
     try {
@@ -377,7 +388,26 @@ export default function MantenimientosPage() {
       </div>
 
       <main className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-7xl space-y-4">
+          {filterId && (
+            <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">
+                  Mostrando mantenimiento específico desde alertas
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilterId}
+                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+              >
+                <X className="mr-1 h-4 w-4" />
+                Ver todos
+              </Button>
+            </div>
+          )}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">

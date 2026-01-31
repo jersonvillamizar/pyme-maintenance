@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
     const estado = searchParams.get("estado")
     const tipo = searchParams.get("tipo")
     const tecnicoId = searchParams.get("tecnicoId")
@@ -23,6 +24,8 @@ export async function GET(request: NextRequest) {
 
     const andFilters: any[] = []
 
+    // Filtro por ID específico (desde alertas)
+    if (id) andFilters.push({ id })
     if (estado) andFilters.push({ estado })
     if (tipo) andFilters.push({ tipo })
     if (tecnicoId) andFilters.push({ tecnicoId })

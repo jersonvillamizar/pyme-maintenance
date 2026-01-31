@@ -213,7 +213,7 @@ export default function AlertasPage() {
                                   {format(new Date(alerta.fecha), "dd MMM yyyy, HH:mm", { locale: es })}
                                 </p>
                                 {alerta.mantenimiento && (
-                                  <Link href={`/mantenimientos`}>
+                                  <Link href={`/mantenimientos?id=${alerta.mantenimiento.id}`}>
                                     <Button variant="outline" size="sm">
                                       Ver Mantenimiento
                                     </Button>
