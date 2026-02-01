@@ -2,17 +2,24 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { History, Filter, FileDown, FileSpreadsheet, Calendar, User, Wrench } from "lucide-react"
+import { History, Filter, FileDown, FileSpreadsheet, Calendar, User, Wrench, Check, ChevronsUpDown, Search, X } from "lucide-react"
 import { Header } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +34,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -99,6 +113,30 @@ export default function HistorialPage() {
   const [filterEmpresa, setFilterEmpresa] = useState<string>("all")
   const [filterFechaDesde, setFilterFechaDesde] = useState<string>("")
   const [filterFechaHasta, setFilterFechaHasta] = useState<string>("")
+// Search State
+  const [searchTerm, setSearchTerm] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
+  const [filteredEquipos, setFilteredEquipos] = useState<Equipo[]>([])
+
+  useEffect(() => {
+    if (filterEquipo === "all") {
+      setSearchTerm("")
+    } else {
+      const found = equipos.find(e => e.id === filterEquipo)
+      if (found) {
+        setSearchTerm(`${found.tipo} - ${found.marca} (${found.serial})`)
+      }
+    }
+  }, [filterEquipo, equipos])
+
+  useEffect(() => {
+    const term = searchTerm.toLowerCase()
+    const filtered = equipos.filter(equipo => {
+      const matchString = `${equipo.tipo} ${equipo.marca} ${equipo.serial} ${equipo.tipo}`.toLowerCase()
+      return matchString.includes(term)
+    })
+    setFilteredEquipos(filtered)
+  }, [searchTerm, equipos])
 
   const isAdmin = session?.user?.role === "ADMIN"
   const isTecnico = session?.user?.role === "TECNICO"
@@ -217,25 +255,80 @@ export default function HistorialPage() {
         description="Registro completo de todas las intervenciones realizadas"
       />
 
-      <div className="border-b border-border bg-card px-6 py-4">
+      <div className="sticky top-0 z-30 border-b border-border bg-card px-6 py-4 shadow-sm">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <div className="flex gap-2 flex-wrap">
-                <Select value={filterEquipo} onValueChange={setFilterEquipo}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Equipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los equipos</SelectItem>
-                    {equipos.map((equipo) => (
-                      <SelectItem key={equipo.id} value={equipo.id}>
-                        {equipo.tipo} - {equipo.marca} ({equipo.serial})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative w-[350px] z-20">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar equipo (Tipo, Marca, Serial)..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                         setSearchTerm(e.target.value)
+                         setIsSearching(true)
+                         if (e.target.value === "") setFilterEquipo("all")
+                      }}
+                      onFocus={() => setIsSearching(true)}
+                      className="pl-9 pr-8" 
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => {
+                          setFilterEquipo("all")
+                          setSearchTerm("")
+                          setIsSearching(false)
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {isSearching && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setIsSearching(false)} 
+                      />
+                      <div className="absolute top-full mt-2 w-full z-20 rounded-lg border bg-popover text-popover-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95 overflow-hidden">
+                        <div className="max-h-[300px] overflow-y-auto p-1">
+                          {filteredEquipos.length === 0 ? (
+                            <div className="py-4 text-center text-sm text-muted-foreground">
+                              No se encontraron equipos
+                            </div>
+                          ) : (
+                            filteredEquipos.map((equipo) => (
+                              <div
+                                key={equipo.id}
+                                className={cn(
+                                  "relative flex cursor-pointer select-none items-center rounded-md px-3 py-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground",
+                                  filterEquipo === equipo.id && "bg-accent/50"
+                                )}
+                                onClick={() => {
+                                  setFilterEquipo(equipo.id)
+                                  setIsSearching(false)
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{equipo.tipo} - {equipo.marca}</span>
+                                  <span className="text-xs text-muted-foreground">S/N: {equipo.serial}</span>
+                                </div>
+                                {filterEquipo === equipo.id && (
+                                  <Check className="ml-auto h-4 w-4 opacity-50" />
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {isAdmin && (
                   <>
