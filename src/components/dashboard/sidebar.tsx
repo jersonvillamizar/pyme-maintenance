@@ -94,6 +94,7 @@ export function Sidebar() {
         </nav>
 
         {/* Settings */}
+        {/* Settings - Deshabilitado por ahora
         <div className="border-t border-border p-4">
           <Link
             href="/configuracion"
@@ -108,6 +109,7 @@ export function Sidebar() {
             Configuración
           </Link>
         </div>
+        */}
       </div>
     </aside>
   )

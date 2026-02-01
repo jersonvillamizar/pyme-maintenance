@@ -80,6 +80,7 @@ export function Header({ title, description }: HeaderProps) {
 
       <div className="flex items-center gap-3">
         {/* Notifications */}
+        {/* Notifications - Deshabilitado por ahora
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
@@ -95,6 +96,7 @@ export function Header({ title, description }: HeaderProps) {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+        */}
 
         {/* User Profile */}
         <DropdownMenu>
@@ -117,6 +119,7 @@ export function Header({ title, description }: HeaderProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {/* Deshabilitado por ahora
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
               Perfil
@@ -125,6 +128,7 @@ export function Header({ title, description }: HeaderProps) {
               <Settings className="mr-2 h-4 w-4" />
               Configuración
             </DropdownMenuItem>
+            */}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
