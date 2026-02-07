@@ -109,6 +109,11 @@ export async function PUT(
     const body = await request.json()
     const validatedData = updateMantenimientoSchema.parse(body)
 
+    // Solo admin puede actualizar mantenimientos
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
+    }
+
     // Verificar que el mantenimiento existe
     const existingMantenimiento = await prisma.mantenimiento.findUnique({
       where: { id: params.id },
@@ -122,18 +127,6 @@ export async function PUT(
         { error: "Mantenimiento no encontrado" },
         { status: 404 }
       )
-    }
-
-    // Si es técnico, solo puede actualizar sus mantenimientos
-    if (session.user.role === "TECNICO" && existingMantenimiento.tecnicoId !== session.user.id) {
-      return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
-    }
-
-    // Si es cliente, verificar empresa
-    if (session.user.role === "CLIENTE" && session.user.empresaId) {
-      if (existingMantenimiento.equipo.empresaId !== session.user.empresaId) {
-        return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
-      }
     }
 
     // Preparar datos para actualizar

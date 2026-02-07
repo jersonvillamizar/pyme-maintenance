@@ -80,9 +80,12 @@ export default function MantenimientosPage() {
   useEffect(() => {
     fetchEmpresas()
     fetchEquipos()
-    fetchTecnicos()
+    // Solo cargar técnicos si es ADMIN (necesita asignar)
+    if (session?.user?.role === "ADMIN") {
+      fetchTecnicos()
+    }
     fetchMantenimientos()
-  }, [])
+  }, [session])
 
   useEffect(() => {
     const timer = setTimeout(() => {

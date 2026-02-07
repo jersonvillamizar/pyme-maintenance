@@ -1,6 +1,6 @@
 "use client"
 
-import { MoreHorizontal, Wrench, Calendar, User, Building2, FileText, AlertTriangle, Clock } from "lucide-react"
+import { MoreHorizontal, Wrench, Calendar, User, Building2, FileText, AlertTriangle, Clock, Eye } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useState } from "react"
+import { MantenimientoDetail } from "./mantenimiento-detail"
 
 
 interface MantenimientosTableProps {
@@ -94,8 +96,10 @@ export function MantenimientosTable({
   userRole = "CLIENTE"
 }: MantenimientosTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [detailMantenimiento, setDetailMantenimiento] = useState<Mantenimiento | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
-  const canEdit = userRole === "ADMIN" || userRole === "TECNICO"
+  const canEdit = userRole === "ADMIN"
   const canDelete = userRole === "ADMIN"
 
   const handleDeleteClick = (id: string) => {
@@ -107,6 +111,11 @@ export function MantenimientosTable({
       onDelete(deleteId)
       setDeleteId(null)
     }
+  }
+
+  const handleViewDetail = (mantenimiento: Mantenimiento) => {
+    setDetailMantenimiento(mantenimiento)
+    setDetailOpen(true)
   }
 
   if (mantenimientos.length === 0) {
@@ -266,6 +275,11 @@ export function MantenimientosTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleViewDetail(mantenimiento)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        Ver detalles
+                      </DropdownMenuItem>
+                      {(canEdit || canDelete) && <DropdownMenuSeparator />}
                       {canEdit && (
                         <DropdownMenuItem onClick={() => onEdit(mantenimiento)}>
                           Editar
@@ -277,11 +291,6 @@ export function MantenimientosTable({
                           className="text-destructive focus:text-destructive"
                         >
                           Eliminar
-                        </DropdownMenuItem>
-                      )}
-                      {!canEdit && !canDelete && (
-                        <DropdownMenuItem disabled>
-                          Sin acciones disponibles
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -310,6 +319,12 @@ export function MantenimientosTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MantenimientoDetail
+        mantenimiento={detailMantenimiento}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
     </>
   )
 }

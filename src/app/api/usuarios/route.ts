@@ -14,14 +14,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    // Solo admin puede ver usuarios
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
-    }
-
     const { searchParams } = new URL(request.url)
     const role = searchParams.get("role")
     const empresaId = searchParams.get("empresaId")
+
+    // Si solo pide técnicos, permitir a todos los usuarios autenticados
+    // (útil para mostrar asignaciones en formularios)
+    if (role === "TECNICO") {
+      const tecnicos = await prisma.user.findMany({
+        where: { role: "TECNICO" },
+        orderBy: { nombre: "asc" },
+        select: {
+          id: true,
+          email: true,
+          nombre: true,
+          role: true,
+        },
+      })
+      return NextResponse.json(tecnicos)
+    }
+
+    // Para otras consultas, solo admin puede ver usuarios
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
+    }
 
     const where: any = {}
 
