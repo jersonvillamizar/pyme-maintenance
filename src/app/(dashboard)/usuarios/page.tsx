@@ -27,6 +27,7 @@ import { UsuariosTable } from "@/components/usuarios/usuarios-table"
 import { UsuarioForm } from "@/components/usuarios/usuario-form"
 import { toast } from "sonner"
 import type { CreateUserInput } from "@/lib/validations/user"
+import { DataPagination } from "@/components/ui/data-pagination"
 
 interface Usuario {
   id: string
@@ -65,6 +66,12 @@ export default function UsuariosPage() {
   const [newUserPassword, setNewUserPassword] = useState<{ email: string; password: string } | null>(null)
   const [copied, setCopied] = useState(false)
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const itemsPerPage = 10
+
   // Redirigir si no es ADMIN
   useEffect(() => {
     if (status === "authenticated" && session?.user?.role !== "ADMIN") {
@@ -97,12 +104,16 @@ export default function UsuariosPage() {
       const params = new URLSearchParams()
       if (filterRole !== "all") params.append("role", filterRole)
       if (filterEmpresa !== "all") params.append("empresaId", filterEmpresa)
+      params.append("page", currentPage.toString())
+      params.append("limit", itemsPerPage.toString())
 
       const response = await fetch(`/api/usuarios?${params.toString()}`)
       if (!response.ok) throw new Error("Error al cargar usuarios")
 
-      const data = await response.json()
-      setUsuarios(data)
+      const result = await response.json()
+      setUsuarios(result.data)
+      setTotalPages(result.totalPages)
+      setTotalItems(result.total)
     } catch (error) {
       toast.error("Error al cargar usuarios")
       console.error(error)
@@ -112,8 +123,14 @@ export default function UsuariosPage() {
   }
 
   useEffect(() => {
-    fetchUsuarios()
+    setCurrentPage(1)
   }, [filterRole, filterEmpresa])
+
+  useEffect(() => {
+    if (session?.user?.role === "ADMIN") {
+      fetchUsuarios()
+    }
+  }, [filterRole, filterEmpresa, currentPage])
 
   const handleCreate = async (data: CreateUserInput) => {
     try {
@@ -270,7 +287,7 @@ export default function UsuariosPage() {
                 <div>
                   <CardTitle>Listado de Usuarios</CardTitle>
                   <CardDescription>
-                    {usuarios.length} {usuarios.length === 1 ? "usuario registrado" : "usuarios registrados"}
+                    {totalItems} {totalItems === 1 ? "usuario registrado" : "usuarios registrados"}
                   </CardDescription>
                 </div>
               </div>
@@ -281,11 +298,20 @@ export default function UsuariosPage() {
                   <p className="text-muted-foreground">Cargando usuarios...</p>
                 </div>
               ) : (
-                <UsuariosTable
-                  usuarios={usuarios}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
+                <>
+                  <UsuariosTable
+                    usuarios={usuarios}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                  <DataPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
               )}
             </CardContent>
           </Card>

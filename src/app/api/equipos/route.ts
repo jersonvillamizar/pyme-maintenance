@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     const empresaId = searchParams.get("empresaId")
     const estado = searchParams.get("estado")
     const search = searchParams.get("search")
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
 
     const andFilters: any[] = []
 
@@ -58,23 +60,45 @@ export async function GET(request: NextRequest) {
 
     const where = andFilters.length > 0 ? { AND: andFilters } : {}
 
+    const include = {
+      empresa: {
+        select: {
+          id: true,
+          nombre: true,
+          nit: true,
+        },
+      },
+      _count: {
+        select: {
+          mantenimientos: true,
+        },
+      },
+    }
+
+    // Si se solicita paginación
+    if (pageParam) {
+      const page = Math.max(1, parseInt(pageParam) || 1)
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10") || 10))
+      const skip = (page - 1) * limit
+
+      const [equipos, total] = await Promise.all([
+        prisma.equipo.findMany({ where, orderBy: { createdAt: "desc" }, include, skip, take: limit }),
+        prisma.equipo.count({ where }),
+      ])
+
+      return NextResponse.json({
+        data: equipos,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      })
+    }
+
     const equipos = await prisma.equipo.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      include: {
-        empresa: {
-          select: {
-            id: true,
-            nombre: true,
-            nit: true,
-          },
-        },
-        _count: {
-          select: {
-            mantenimientos: true,
-          },
-        },
-      },
+      include,
     })
 
     return NextResponse.json(equipos)

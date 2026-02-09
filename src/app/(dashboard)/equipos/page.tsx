@@ -25,6 +25,7 @@ import { EquiposTable } from "@/components/equipos/equipos-table"
 import { EquipoForm } from "@/components/equipos/equipo-form"
 import { toast } from "sonner"
 import type { EquipoInput } from "@/lib/validations/equipo"
+import { DataPagination } from "@/components/ui/data-pagination"
 import { exportEquiposToExcel } from "@/lib/excel-export"
 import { exportEquiposToPDF } from "@/lib/pdf-export"
 
@@ -67,6 +68,12 @@ export default function EquiposPage() {
   const [filterEstado, setFilterEstado] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const itemsPerPage = 10
+
   // Filtro por ID desde URL (viene de alertas)
   const filterId = searchParams.get("id")
 
@@ -95,12 +102,16 @@ export default function EquiposPage() {
       if (filterEmpresa !== "all") params.append("empresaId", filterEmpresa)
       if (filterEstado !== "all") params.append("estado", filterEstado)
       if (searchQuery) params.append("search", searchQuery)
+      params.append("page", currentPage.toString())
+      params.append("limit", itemsPerPage.toString())
 
       const response = await fetch(`/api/equipos?${params.toString()}`)
       if (!response.ok) throw new Error("Error al cargar equipos")
 
-      const data = await response.json()
-      setEquipos(data)
+      const result = await response.json()
+      setEquipos(result.data)
+      setTotalPages(result.totalPages)
+      setTotalItems(result.total)
     } catch (error) {
       toast.error("Error al cargar equipos")
       console.error(error)
@@ -110,11 +121,15 @@ export default function EquiposPage() {
   }
 
   useEffect(() => {
+    setCurrentPage(1)
+  }, [filterEmpresa, filterEstado, searchQuery, filterId])
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       fetchEquipos()
     }, 500)
     return () => clearTimeout(timer)
-  }, [filterEmpresa, filterEstado, searchQuery, filterId])
+  }, [filterEmpresa, filterEstado, searchQuery, filterId, currentPage])
 
   const handleCreate = async (data: EquipoInput) => {
     try {
@@ -357,7 +372,7 @@ export default function EquiposPage() {
                 <div>
                   <CardTitle>Inventario de Equipos</CardTitle>
                   <CardDescription>
-                    {equipos.length} {equipos.length === 1 ? "equipo registrado" : "equipos registrados"}
+                    {totalItems} {totalItems === 1 ? "equipo registrado" : "equipos registrados"}
                   </CardDescription>
                 </div>
               </div>
@@ -368,13 +383,22 @@ export default function EquiposPage() {
                   <p className="text-muted-foreground">Cargando equipos...</p>
                 </div>
               ) : (
-                <EquiposTable
-                  equipos={equipos}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  canEdit={canEdit}
-                  canDelete={canDelete}
-                />
+                <>
+                  <EquiposTable
+                    equipos={equipos}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                  />
+                  <DataPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
               )}
             </CardContent>
           </Card>

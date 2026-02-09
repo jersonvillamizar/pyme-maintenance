@@ -30,6 +30,7 @@ import { exportMantenimientosToPDF } from "@/lib/pdf-export"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import type { Mantenimiento } from "@/types/mantenimiento"
+import { DataPagination } from "@/components/ui/data-pagination"
 
 
 interface Equipo {
@@ -77,6 +78,12 @@ export default function MantenimientosPage() {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [filterAlerta, setFilterAlerta] = useState<boolean>(false)
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const itemsPerPage = 10
+
   useEffect(() => {
     fetchEmpresas()
     fetchEquipos()
@@ -88,11 +95,15 @@ export default function MantenimientosPage() {
   }, [session])
 
   useEffect(() => {
+    setCurrentPage(1)
+  }, [filterEstado, filterTipo, filterTecnico, filterEmpresa, searchQuery, filterId])
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       fetchMantenimientos()
     }, 500)
     return () => clearTimeout(timer)
-  }, [filterEstado, filterTipo, filterTecnico, filterEmpresa, searchQuery, filterId])
+  }, [filterEstado, filterTipo, filterTecnico, filterEmpresa, searchQuery, filterId, currentPage])
 
   const fetchEmpresas = async () => {
     try {
@@ -139,12 +150,16 @@ export default function MantenimientosPage() {
       if (filterTecnico !== "all") params.append("tecnicoId", filterTecnico)
       if (filterEmpresa !== "all") params.append("empresaId", filterEmpresa)
       if (searchQuery) params.append("search", searchQuery)
+      params.append("page", currentPage.toString())
+      params.append("limit", itemsPerPage.toString())
 
       const response = await fetch(`/api/mantenimientos?${params.toString()}`)
       if (!response.ok) throw new Error("Error al cargar mantenimientos")
 
-      const data = await response.json()
-      setMantenimientos(data)
+      const result = await response.json()
+      setMantenimientos(result.data)
+      setTotalPages(result.totalPages)
+      setTotalItems(result.total)
     } catch (error) {
       toast.error("Error al cargar mantenimientos")
       console.error(error)
@@ -462,8 +477,8 @@ export default function MantenimientosPage() {
                   <CardTitle>Listado de Mantenimientos</CardTitle>
                   <CardDescription>
                     {filterAlerta
-                      ? `${mantenimientosFiltrados.length} de ${mantenimientos.length} en alerta`
-                      : `${mantenimientos.length} ${mantenimientos.length === 1 ? "mantenimiento registrado" : "mantenimientos registrados"}`
+                      ? `${mantenimientosFiltrados.length} de ${totalItems} en alerta`
+                      : `${totalItems} ${totalItems === 1 ? "mantenimiento registrado" : "mantenimientos registrados"}`
                     }
                   </CardDescription>
                 </div>
@@ -475,12 +490,21 @@ export default function MantenimientosPage() {
                   <p className="text-muted-foreground">Cargando mantenimientos...</p>
                 </div>
               ) : (
-                <MantenimientosTable
-                  mantenimientos={mantenimientosFiltrados}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  userRole={session?.user?.role as "ADMIN" | "TECNICO" | "CLIENTE" | undefined}
-                />
+                <>
+                  <MantenimientosTable
+                    mantenimientos={mantenimientosFiltrados}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    userRole={session?.user?.role as "ADMIN" | "TECNICO" | "CLIENTE" | undefined}
+                  />
+                  <DataPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
               )}
             </CardContent>
           </Card>

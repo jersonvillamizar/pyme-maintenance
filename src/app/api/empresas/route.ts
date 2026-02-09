@@ -13,16 +13,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
 
-    const empresas = await prisma.empresa.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        _count: {
-          select: {
-            usuarios: true,
-            equipos: true,
-          },
+    const { searchParams } = new URL(request.url)
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
+
+    const include = {
+      _count: {
+        select: {
+          usuarios: true,
+          equipos: true,
         },
       },
+    }
+
+    // Si se solicita paginación
+    if (pageParam) {
+      const page = Math.max(1, parseInt(pageParam) || 1)
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10") || 10))
+      const skip = (page - 1) * limit
+
+      const [empresas, total] = await Promise.all([
+        prisma.empresa.findMany({ orderBy: { createdAt: "desc" }, include, skip, take: limit }),
+        prisma.empresa.count(),
+      ])
+
+      return NextResponse.json({
+        data: empresas,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      })
+    }
+
+    const empresas = await prisma.empresa.findMany({
+      orderBy: { createdAt: "desc" },
+      include,
     })
 
     return NextResponse.json(empresas)

@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     const equipoId = searchParams.get("equipoId")
     const empresaId = searchParams.get("empresaId")
     const search = searchParams.get("search")
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
 
     const andFilters: any[] = []
 
@@ -66,33 +68,62 @@ export async function GET(request: NextRequest) {
 
     const where = andFilters.length > 0 ? { AND: andFilters } : {}
 
-    const mantenimientos = await prisma.mantenimiento.findMany({
-      where,
-      orderBy: { fechaProgramada: "desc" },
-      include: {
-        equipo: {
-          select: {
-            id: true,
-            tipo: true,
-            marca: true,
-            modelo: true,
-            serial: true,
-            empresa: {
-              select: {
-                id: true,
-                nombre: true,
-              },
+    const include = {
+      equipo: {
+        select: {
+          id: true,
+          tipo: true,
+          marca: true,
+          modelo: true,
+          serial: true,
+          empresa: {
+            select: {
+              id: true,
+              nombre: true,
             },
           },
         },
-        tecnico: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true,
-          },
+      },
+      tecnico: {
+        select: {
+          id: true,
+          nombre: true,
+          email: true,
         },
       },
+    }
+
+    // Si se solicita paginación
+    if (pageParam) {
+      const page = Math.max(1, parseInt(pageParam) || 1)
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10") || 10))
+      const skip = (page - 1) * limit
+
+      const [mantenimientos, total] = await Promise.all([
+        prisma.mantenimiento.findMany({
+          where,
+          orderBy: { fechaProgramada: "desc" },
+          include,
+          skip,
+          take: limit,
+        }),
+        prisma.mantenimiento.count({ where }),
+      ])
+
+      return NextResponse.json({
+        data: mantenimientos,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      })
+    }
+
+    // Sin paginación (compatibilidad con dropdowns y otros usos)
+    const mantenimientos = await prisma.mantenimiento.findMany({
+      where,
+      orderBy: { fechaProgramada: "desc" },
+      include,
     })
 
     return NextResponse.json(mantenimientos)

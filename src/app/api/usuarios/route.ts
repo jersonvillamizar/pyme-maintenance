@@ -39,6 +39,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const pageParam = searchParams.get("page")
+    const limitParam = searchParams.get("limit")
+
     const where: any = {}
 
     if (role) {
@@ -49,32 +52,54 @@ export async function GET(request: NextRequest) {
       where.empresaId = empresaId
     }
 
+    const select = {
+      id: true,
+      email: true,
+      nombre: true,
+      role: true,
+      empresaId: true,
+      activo: true,
+      createdAt: true,
+      updatedAt: true,
+      empresa: {
+        select: {
+          id: true,
+          nombre: true,
+          nit: true,
+        },
+      },
+      _count: {
+        select: {
+          mantenimientos: true,
+          historial: true,
+        },
+      },
+    }
+
+    // Si se solicita paginación
+    if (pageParam) {
+      const page = Math.max(1, parseInt(pageParam) || 1)
+      const limit = Math.min(100, Math.max(1, parseInt(limitParam || "10") || 10))
+      const skip = (page - 1) * limit
+
+      const [usuarios, total] = await Promise.all([
+        prisma.user.findMany({ where, orderBy: { createdAt: "desc" }, select, skip, take: limit }),
+        prisma.user.count({ where }),
+      ])
+
+      return NextResponse.json({
+        data: usuarios,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      })
+    }
+
     const usuarios = await prisma.user.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        email: true,
-        nombre: true,
-        role: true,
-        empresaId: true,
-        activo: true,
-        createdAt: true,
-        updatedAt: true,
-        empresa: {
-          select: {
-            id: true,
-            nombre: true,
-            nit: true,
-          },
-        },
-        _count: {
-          select: {
-            mantenimientos: true,
-            historial: true,
-          },
-        },
-      },
+      select,
     })
 
     return NextResponse.json(usuarios)

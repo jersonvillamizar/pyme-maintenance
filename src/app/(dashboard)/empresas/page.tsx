@@ -11,6 +11,7 @@ import { EmpresasTable } from "@/components/empresas/empresas-table"
 import { EmpresaForm } from "@/components/empresas/empresa-form"
 import { toast } from "sonner"
 import type { EmpresaInput } from "@/lib/validations/empresa"
+import { DataPagination } from "@/components/ui/data-pagination"
 
 interface Empresa {
   id: string
@@ -35,6 +36,12 @@ export default function EmpresasPage() {
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | undefined>()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const itemsPerPage = 10
+
   // Redirigir si no es ADMIN
   useEffect(() => {
     if (status === "authenticated" && session?.user?.role !== "ADMIN") {
@@ -48,17 +55,29 @@ export default function EmpresasPage() {
     }
   }, [session])
 
+  useEffect(() => {
+    if (session?.user?.role === "ADMIN") {
+      fetchEmpresas()
+    }
+  }, [currentPage])
+
   const fetchEmpresas = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/empresas")
+      const params = new URLSearchParams()
+      params.append("page", currentPage.toString())
+      params.append("limit", itemsPerPage.toString())
+
+      const response = await fetch(`/api/empresas?${params.toString()}`)
 
       if (!response.ok) {
         throw new Error("Error al cargar empresas")
       }
 
-      const data = await response.json()
-      setEmpresas(data)
+      const result = await response.json()
+      setEmpresas(result.data)
+      setTotalPages(result.totalPages)
+      setTotalItems(result.total)
     } catch (error) {
       toast.error("Error al cargar empresas")
       console.error(error)
@@ -180,7 +199,7 @@ export default function EmpresasPage() {
                 <div>
                   <CardTitle>Listado de Empresas</CardTitle>
                   <CardDescription>
-                    {empresas.length} {empresas.length === 1 ? "empresa registrada" : "empresas registradas"}
+                    {totalItems} {totalItems === 1 ? "empresa registrada" : "empresas registradas"}
                   </CardDescription>
                 </div>
               </div>
@@ -191,11 +210,20 @@ export default function EmpresasPage() {
                   <p className="text-muted-foreground">Cargando empresas...</p>
                 </div>
               ) : (
-                <EmpresasTable
-                  empresas={empresas}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
+                <>
+                  <EmpresasTable
+                    empresas={empresas}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                  <DataPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
               )}
             </CardContent>
           </Card>

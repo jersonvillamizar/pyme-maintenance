@@ -48,6 +48,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { exportHistorialToExcel } from "@/lib/excel-export"
 import { exportHistorialToPDF } from "@/lib/pdf-export"
+import { DataPagination } from "@/components/ui/data-pagination"
 
 interface HistorialItem {
   id: string
@@ -113,6 +114,13 @@ export default function HistorialPage() {
   const [filterEmpresa, setFilterEmpresa] = useState<string>("all")
   const [filterFechaDesde, setFilterFechaDesde] = useState<string>("")
   const [filterFechaHasta, setFilterFechaHasta] = useState<string>("")
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const itemsPerPage = 10
+
 // Search State
   const [searchTerm, setSearchTerm] = useState("")
   const [isSearching, setIsSearching] = useState(false)
@@ -148,8 +156,12 @@ export default function HistorialPage() {
   }, [])
 
   useEffect(() => {
-    fetchHistorial()
+    setCurrentPage(1)
   }, [filterEquipo, filterTecnico, filterEmpresa, filterFechaDesde, filterFechaHasta])
+
+  useEffect(() => {
+    fetchHistorial()
+  }, [filterEquipo, filterTecnico, filterEmpresa, filterFechaDesde, filterFechaHasta, currentPage])
 
   const fetchEquipos = async () => {
     try {
@@ -194,12 +206,16 @@ export default function HistorialPage() {
       if (filterEmpresa !== "all") params.append("empresaId", filterEmpresa)
       if (filterFechaDesde) params.append("fechaDesde", filterFechaDesde)
       if (filterFechaHasta) params.append("fechaHasta", filterFechaHasta)
+      params.append("page", currentPage.toString())
+      params.append("limit", itemsPerPage.toString())
 
       const response = await fetch(`/api/historial?${params.toString()}`)
       if (!response.ok) throw new Error("Error al cargar historial")
 
-      const data = await response.json()
-      setHistorial(data)
+      const result = await response.json()
+      setHistorial(result.data)
+      setTotalPages(result.totalPages)
+      setTotalItems(result.total)
     } catch (error) {
       toast.error("Error al cargar historial")
       console.error(error)
@@ -246,6 +262,7 @@ export default function HistorialPage() {
     setFilterEmpresa("all")
     setFilterFechaDesde("")
     setFilterFechaHasta("")
+    setCurrentPage(1)
   }
 
   return (
@@ -425,7 +442,7 @@ export default function HistorialPage() {
                 <div>
                   <CardTitle>Historial Completo</CardTitle>
                   <CardDescription>
-                    {historial.length} {historial.length === 1 ? "registro encontrado" : "registros encontrados"}
+                    {totalItems} {totalItems === 1 ? "registro encontrado" : "registros encontrados"}
                   </CardDescription>
                 </div>
               </div>
@@ -446,79 +463,88 @@ export default function HistorialPage() {
                   </p>
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Equipo</TableHead>
-                        <TableHead>Empresa</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Técnico</TableHead>
-                        <TableHead className="max-w-[300px]">Observaciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {historial.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                <>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Equipo</TableHead>
+                          <TableHead>Empresa</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Técnico</TableHead>
+                          <TableHead className="max-w-[300px]">Observaciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {historial.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">
+                                    {format(new Date(item.fecha), "dd/MM/yyyy", { locale: es })}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {format(new Date(item.fecha), "HH:mm", { locale: es })}
+                                  </span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
                               <div className="flex flex-col">
-                                <span className="text-sm font-medium">
-                                  {format(new Date(item.fecha), "dd/MM/yyyy", { locale: es })}
+                                <span className="font-medium text-sm">
+                                  {item.equipo.tipo} - {item.equipo.marca}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {format(new Date(item.fecha), "HH:mm", { locale: es })}
+                                  S/N: {item.equipo.serial}
                                 </span>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-sm">
-                                {item.equipo.tipo} - {item.equipo.marca}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                S/N: {item.equipo.serial}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm">{item.equipo.empresa.nombre}</span>
-                          </TableCell>
-                          <TableCell>
-                            {item.mantenimiento?.tipo ? (
-                              <Badge
-                                variant="outline"
-                                className={tipoConfig[item.mantenimiento.tipo].color}
-                              >
-                                {tipoConfig[item.mantenimiento.tipo].label}
-                              </Badge>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {item.tecnico ? (
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">{item.tecnico.nombre}</span>
-                              </div>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="max-w-[300px]">
-                            <p className="text-sm text-muted-foreground truncate">
-                              {item.observaciones}
-                            </p>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm">{item.equipo.empresa.nombre}</span>
+                            </TableCell>
+                            <TableCell>
+                              {item.mantenimiento?.tipo ? (
+                                <Badge
+                                  variant="outline"
+                                  className={tipoConfig[item.mantenimiento.tipo].color}
+                                >
+                                  {tipoConfig[item.mantenimiento.tipo].label}
+                                </Badge>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {item.tecnico ? (
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm">{item.tecnico.nombre}</span>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-[300px]">
+                              <p className="text-sm text-muted-foreground truncate">
+                                {item.observaciones}
+                              </p>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <DataPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
               )}
             </CardContent>
           </Card>
