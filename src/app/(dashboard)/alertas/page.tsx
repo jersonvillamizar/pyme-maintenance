@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Header } from "@/components/dashboard/header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Bell, AlertTriangle, Clock, Wrench, RefreshCw, Building2, MapPin, Hash, Monitor, User, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DataPagination } from "@/components/ui/data-pagination"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -87,6 +88,8 @@ export default function AlertasPage() {
   const [loading, setLoading] = useState(true)
   const [filtroTipo, setFiltroTipo] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     fetchAlertas()
@@ -131,13 +134,26 @@ export default function AlertasPage() {
     return searchTerms.every(term => searchableText.includes(term))
   }
 
-  const alertasFiltradas = data?.alertas.filter((alerta) => {
-    // Filtro por tipo
-    if (filtroTipo !== "all" && alerta.tipo !== filtroTipo) return false
-    // Filtro por búsqueda
-    if (!matchesSearch(alerta, searchQuery)) return false
-    return true
-  })
+  const alertasFiltradas = useMemo(() =>
+    data?.alertas.filter((alerta) => {
+      if (filtroTipo !== "all" && alerta.tipo !== filtroTipo) return false
+      if (!matchesSearch(alerta, searchQuery)) return false
+      return true
+    }), [data, filtroTipo, searchQuery])
+
+  // Resetear página al cambiar filtros
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filtroTipo, searchQuery])
+
+  // Paginación client-side
+  const totalItems = alertasFiltradas?.length || 0
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const alertasPaginadas = useMemo(() => {
+    if (!alertasFiltradas) return []
+    const start = (currentPage - 1) * itemsPerPage
+    return alertasFiltradas.slice(start, start + itemsPerPage)
+  }, [alertasFiltradas, currentPage, itemsPerPage])
 
   return (
     <>
@@ -186,9 +202,9 @@ export default function AlertasPage() {
                   <CardTitle>Listado de Alertas</CardTitle>
                   <CardDescription>
                     {alertasFiltradas && data?.alertas
-                      ? alertasFiltradas.length === data.alertas.length
+                      ? totalItems === data.alertas.length
                         ? `${data.alertas.length} alertas activas`
-                        : `${alertasFiltradas.length} de ${data.alertas.length} alertas`
+                        : `${totalItems} de ${data.alertas.length} alertas`
                       : "Alertas activas del sistema"
                     }
                   </CardDescription>
@@ -254,9 +270,9 @@ export default function AlertasPage() {
                 <div className="flex items-center justify-center py-12">
                   <p className="text-muted-foreground">Cargando alertas...</p>
                 </div>
-              ) : alertasFiltradas && alertasFiltradas.length > 0 ? (
+              ) : alertasPaginadas && alertasPaginadas.length > 0 ? (
                 <div className="space-y-3">
-                  {alertasFiltradas.map((alerta) => {
+                  {alertasPaginadas.map((alerta) => {
                     const TipoIcon = tipoConfig[alerta.tipo].icon
                     return (
                       <Card key={alerta.id} className="border-l-4" style={{
@@ -392,6 +408,13 @@ export default function AlertasPage() {
                   )}
                 </div>
               )}
+              <DataPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+              />
             </CardContent>
           </Card>
         </div>
