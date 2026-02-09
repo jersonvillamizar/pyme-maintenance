@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Plus, Building2 } from "lucide-react"
 import { Header } from "@/components/dashboard/header"
@@ -26,16 +27,26 @@ interface Empresa {
 }
 
 export default function EmpresasPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | undefined>()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Redirigir si no es ADMIN
   useEffect(() => {
-    fetchEmpresas()
-  }, [])
+    if (status === "authenticated" && session?.user?.role !== "ADMIN") {
+      router.push("/")
+    }
+  }, [session, status, router])
+
+  useEffect(() => {
+    if (session?.user?.role === "ADMIN") {
+      fetchEmpresas()
+    }
+  }, [session])
 
   const fetchEmpresas = async () => {
     try {

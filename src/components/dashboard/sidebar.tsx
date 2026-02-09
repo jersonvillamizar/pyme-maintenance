@@ -15,19 +15,24 @@ import {
   History,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useSession } from "next-auth/react"
 
-const menuItems = [
+type Role = "ADMIN" | "TECNICO" | "CLIENTE"
+
+const menuItems: { icon: any; label: string; href: string; badge?: boolean; roles?: Role[] }[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-  { icon: Building2, label: "Empresas", href: "/empresas" },
-  { icon: Wrench, label: "Equipos", href: "/equipos" },
+  { icon: Building2, label: "Empresas", href: "/empresas", roles: ["ADMIN"] },
+  { icon: Wrench, label: "Equipos", href: "/equipos", roles: ["ADMIN", "CLIENTE"] },
   { icon: ClipboardList, label: "Mantenimientos", href: "/mantenimientos" },
   { icon: History, label: "Historial", href: "/historial" },
   { icon: Bell, label: "Alertas", href: "/alertas", badge: true },
-  { icon: Users, label: "Usuarios", href: "/usuarios" },
+  { icon: Users, label: "Usuarios", href: "/usuarios", roles: ["ADMIN"] },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const userRole = session?.user?.role as Role | undefined
   const [alertasCount, setAlertasCount] = useState(0)
 
   useEffect(() => {
@@ -65,7 +70,9 @@ export function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
-          {menuItems.map((item) => {
+          {menuItems
+            .filter((item) => !item.roles || (userRole && item.roles.includes(userRole)))
+            .map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
             const showBadge = item.badge && alertasCount > 0

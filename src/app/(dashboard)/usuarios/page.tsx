@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Plus, Users as UsersIcon, Filter, Copy, Check } from "lucide-react"
+import { useSession } from "next-auth/react"
 import { Header } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,6 +52,8 @@ interface Empresa {
 }
 
 export default function UsuariosPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,10 +65,19 @@ export default function UsuariosPage() {
   const [newUserPassword, setNewUserPassword] = useState<{ email: string; password: string } | null>(null)
   const [copied, setCopied] = useState(false)
 
+  // Redirigir si no es ADMIN
   useEffect(() => {
-    fetchEmpresas()
-    fetchUsuarios()
-  }, [])
+    if (status === "authenticated" && session?.user?.role !== "ADMIN") {
+      router.push("/")
+    }
+  }, [session, status, router])
+
+  useEffect(() => {
+    if (session?.user?.role === "ADMIN") {
+      fetchEmpresas()
+      fetchUsuarios()
+    }
+  }, [session])
 
   const fetchEmpresas = async () => {
     try {
