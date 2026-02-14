@@ -21,14 +21,21 @@ export async function GET(request: NextRequest) {
     // Si solo pide técnicos, permitir a todos los usuarios autenticados
     // (útil para mostrar asignaciones en formularios)
     if (role === "TECNICO") {
+      const where: any = { role: "TECNICO" }
+      
+      if (empresaId) {
+        where.empresaId = empresaId
+      }
+
       const tecnicos = await prisma.user.findMany({
-        where: { role: "TECNICO" },
+        where,
         orderBy: { nombre: "asc" },
         select: {
           id: true,
           email: true,
           nombre: true,
           role: true,
+          empresaId: true,
         },
       })
       return NextResponse.json(tecnicos)

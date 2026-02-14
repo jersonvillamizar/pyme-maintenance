@@ -46,7 +46,7 @@ import {
 interface MantenimientoFormProps {
   mantenimiento?: Mantenimiento
   equipos: Array<{ id: string; tipo: string; marca: string; modelo: string | null; serial: string; empresaId: string; estado: string }>
-  tecnicos: Array<{ id: string; nombre: string; email: string }>
+  tecnicos: Array<{ id: string; nombre: string; email: string; empresaId: string | null }>
   empresas: Array<{ id: string; nombre: string }>
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -186,6 +186,18 @@ export function MantenimientoForm({
     return belongsToEmpresa && isAvailable
   })
 
+  const filteredTecnicos = tecnicos.filter((tecnico) => {
+    // Si hay una empresa seleccionada, mostrar solo técnicos de esa empresa o sin empresa (opcional para staff global)
+    // Según requerimiento estricto: "solo deberían salir los tecnicos asociados a esa empresa"
+    if (selectedEmpresaId) {
+       return tecnico.empresaId === selectedEmpresaId
+    }
+    // Si no hay empresa seleccionada (al inicio), ¿mostrar todos? o ¿ninguno?
+    // Mejor mostrar todos si no se ha filtrado empresa aun, o vacio.
+    // Dado que el flujo obliga a seleccionar empresa primero para equipos, tiene sentido para técnicos también.
+    return true
+  })
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
@@ -210,6 +222,7 @@ export function MantenimientoForm({
                   onValueChange={(value) => {
                     setSelectedEmpresaId(value)
                     form.setValue("equipoId", "")
+                    form.setValue("tecnicoId", "") // Resetear técnico al cambiar empresa
                   }}
                   disabled={!!mantenimiento}
                 >
@@ -274,14 +287,16 @@ export function MantenimientoForm({
                    <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
+                    value={field.value}
+                    disabled={!selectedEmpresaId}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un técnico" />
+                        <SelectValue placeholder={selectedEmpresaId ? "Selecciona un técnico" : "Primero selecciona empresa"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {tecnicos.map((tecnico) => (
+                      {filteredTecnicos.map((tecnico) => (
                         <SelectItem key={tecnico.id} value={tecnico.id}>
                           {tecnico.nombre} ({tecnico.email})
                         </SelectItem>

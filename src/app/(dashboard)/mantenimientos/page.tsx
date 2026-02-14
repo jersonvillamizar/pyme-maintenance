@@ -47,6 +47,7 @@ interface Tecnico {
   id: string
   nombre: string
   email: string
+  empresaId: string | null
 }
 
 interface Empresa {
