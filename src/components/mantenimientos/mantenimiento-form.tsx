@@ -52,6 +52,7 @@ interface MantenimientoFormProps {
   onOpenChange: (open: boolean) => void
   onSubmit: (data: MantenimientoInput) => Promise<void>
   isLoading: boolean
+  clienteEmpresaId?: string
 }
 
 export function MantenimientoForm({
@@ -63,6 +64,7 @@ export function MantenimientoForm({
   onOpenChange,
   onSubmit,
   isLoading,
+  clienteEmpresaId,
 }: MantenimientoFormProps) {
   const [fechaProgramadaOpen, setFechaProgramadaOpen] = useState(false)
   const [fechaRealizadaOpen, setFechaRealizadaOpen] = useState(false)
@@ -117,9 +119,9 @@ export function MantenimientoForm({
         observaciones: null,
         reporteUrl: null,
       })
-      setSelectedEmpresaId("")
+      setSelectedEmpresaId(clienteEmpresaId || "")
     }
-  }, [mantenimiento, form, open])
+  }, [mantenimiento, form, open, clienteEmpresaId])
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]

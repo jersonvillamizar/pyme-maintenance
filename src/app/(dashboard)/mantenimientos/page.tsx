@@ -87,8 +87,8 @@ export default function MantenimientosPage() {
   useEffect(() => {
     fetchEmpresas()
     fetchEquipos()
-    // Solo cargar técnicos si es ADMIN (necesita asignar)
-    if (session?.user?.role === "ADMIN") {
+    // Cargar técnicos si es ADMIN o CLIENTE (pueden crear/editar mantenimientos)
+    if (session?.user?.role === "ADMIN" || session?.user?.role === "CLIENTE") {
       fetchTecnicos()
     }
     fetchMantenimientos()
@@ -411,7 +411,7 @@ export default function MantenimientosPage() {
                 </SelectContent>
               </Select>
 
-              {session?.user?.role === "ADMIN" && (
+              {(session?.user?.role === "ADMIN" || session?.user?.role === "CLIENTE") && (
                 <>
                   <Select value={filterTecnico} onValueChange={setFilterTecnico}>
                     <SelectTrigger className="w-[180px]">
@@ -495,6 +495,7 @@ export default function MantenimientosPage() {
                     mantenimientos={mantenimientosFiltrados}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onRefresh={fetchMantenimientos}
                     userRole={session?.user?.role as "ADMIN" | "TECNICO" | "CLIENTE" | undefined}
                   />
                   <DataPagination
@@ -520,6 +521,7 @@ export default function MantenimientosPage() {
         onOpenChange={handleFormOpenChange}
         onSubmit={editingMantenimiento ? handleUpdate : handleCreate}
         isLoading={isSubmitting}
+        clienteEmpresaId={session?.user?.role === "CLIENTE" ? session?.user?.empresaId ?? undefined : undefined}
       />
     </>
   )

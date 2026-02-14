@@ -47,6 +47,7 @@ interface EquipoFormProps {
   onSubmit: (data: EquipoInput) => Promise<void>
   isLoading?: boolean
   isCliente?: boolean
+  clienteEmpresaId?: string
 }
 
 export function EquipoForm({
@@ -57,6 +58,7 @@ export function EquipoForm({
   onSubmit,
   isLoading = false,
   isCliente = false,
+  clienteEmpresaId,
 }: EquipoFormProps) {
   const form = useForm<EquipoInput>({
     resolver: zodResolver(equipoSchema),
@@ -90,10 +92,10 @@ export function EquipoForm({
         serial: "",
         estado: "ACTIVO",
         ubicacion: "",
-        empresaId: empresas.length === 1 ? empresas[0].id : "",
+        empresaId: clienteEmpresaId || (empresas.length === 1 ? empresas[0].id : ""),
       })
     }
-  }, [equipo, empresas, form])
+  }, [equipo, empresas, form, clienteEmpresaId])
 
   const handleSubmit = async (data: EquipoInput) => {
     await onSubmit(data)
@@ -183,7 +185,6 @@ export function EquipoForm({
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                       value={field.value}
-                      disabled={isCliente}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -203,33 +204,35 @@ export function EquipoForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="estado"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un estado" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="ACTIVO">Activo</SelectItem>
-                        <SelectItem value="INACTIVO">Inactivo</SelectItem>
-                        <SelectItem value="EN_MANTENIMIENTO">En Mantenimiento</SelectItem>
-                        <SelectItem value="DADO_DE_BAJA">Dado de Baja</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {equipo && (
+                <FormField
+                  control={form.control}
+                  name="estado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado *</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un estado" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ACTIVO">Activo</SelectItem>
+                          <SelectItem value="INACTIVO">Inactivo</SelectItem>
+                          <SelectItem value="EN_MANTENIMIENTO">En Mantenimiento</SelectItem>
+                          <SelectItem value="DADO_DE_BAJA">Dado de Baja</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

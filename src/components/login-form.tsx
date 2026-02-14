@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -108,9 +109,9 @@ export function LoginForm() {
                 Recuérdame
               </Label>
             </div>
-            <a href="#" className="text-sm text-primary hover:text-primary/80 transition-colors">
+            <Link href="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors">
               ¿Olvidaste tu contraseña?
-            </a>
+            </Link>
           </div>
 
           <Button
@@ -125,9 +126,9 @@ export function LoginForm() {
         <div className="mt-6 text-center text-sm text-muted-foreground">
           <p>
             ¿No tienes una cuenta?{" "}
-            <a href="#" className="text-primary hover:text-primary/80 transition-colors font-medium">
+            <Link href="/contact" className="text-primary hover:text-primary/80 transition-colors font-medium">
               Contacta al administrador
-            </a>
+            </Link>
           </p>
         </div>
       </CardContent>

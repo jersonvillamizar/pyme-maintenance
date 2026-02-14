@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { updateMantenimientoSchema } from "@/lib/validations/mantenimiento"
+import { updateMantenimientoSchema, cambiarEstadoSchema } from "@/lib/validations/mantenimiento"
 
 // GET /api/mantenimientos/[id] - Obtener un mantenimiento por ID
 export async function GET(
@@ -92,6 +92,34 @@ export async function GET(
   }
 }
 
+// Función auxiliar para actualizar estado del equipo automáticamente
+async function actualizarEstadoEquipo(
+  tx: any,
+  equipoId: string,
+  nuevoEstadoMantenimiento: string
+) {
+  if (nuevoEstadoMantenimiento === "EN_PROCESO" || nuevoEstadoMantenimiento === "PROGRAMADO") {
+    await tx.equipo.update({
+      where: { id: equipoId },
+      data: { estado: "EN_MANTENIMIENTO" },
+    })
+  } else if (nuevoEstadoMantenimiento === "COMPLETADO" || nuevoEstadoMantenimiento === "CANCELADO") {
+    // Verificar si hay otros mantenimientos activos para este equipo
+    const otrosActivos = await tx.mantenimiento.count({
+      where: {
+        equipoId,
+        estado: { in: ["PROGRAMADO", "EN_PROCESO"] },
+      },
+    })
+    if (otrosActivos === 0) {
+      await tx.equipo.update({
+        where: { id: equipoId },
+        data: { estado: "ACTIVO" },
+      })
+    }
+  }
+}
+
 // PUT /api/mantenimientos/[id] - Actualizar mantenimiento
 export async function PUT(
   request: NextRequest,
@@ -105,18 +133,11 @@ export async function PUT(
     }
 
     const { id } = await params
-
     const body = await request.json()
-    const validatedData = updateMantenimientoSchema.parse(body)
-
-    // Solo admin puede actualizar mantenimientos
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
-    }
 
     // Verificar que el mantenimiento existe
     const existingMantenimiento = await prisma.mantenimiento.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         equipo: true,
       },
@@ -128,6 +149,67 @@ export async function PUT(
         { status: 404 }
       )
     }
+
+    // TECNICO: solo puede cambiar estado y observaciones de mantenimientos asignados a él
+    if (session.user.role === "TECNICO") {
+      if (existingMantenimiento.tecnicoId !== session.user.id) {
+        return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
+      }
+
+      const validatedData = cambiarEstadoSchema.parse(body)
+      const updateData: any = { estado: validatedData.estado }
+
+      if (validatedData.observaciones !== undefined) {
+        updateData.observaciones = validatedData.observaciones
+      }
+
+      if (validatedData.estado === "COMPLETADO") {
+        updateData.fechaRealizada = new Date()
+      }
+
+      const result = await prisma.$transaction(async (tx) => {
+        const mantenimiento = await tx.mantenimiento.update({
+          where: { id },
+          data: updateData,
+          include: {
+            equipo: {
+              select: {
+                id: true,
+                tipo: true,
+                marca: true,
+                serial: true,
+                empresa: { select: { id: true, nombre: true } },
+              },
+            },
+            tecnico: {
+              select: { id: true, nombre: true, email: true },
+            },
+          },
+        })
+
+        // Crear historial si cambió el estado
+        if (validatedData.estado !== existingMantenimiento.estado) {
+          await tx.historial.create({
+            data: {
+              equipoId: existingMantenimiento.equipoId,
+              mantenimientoId: id,
+              tecnicoId: session.user.id,
+              observaciones: `Estado cambiado a: ${validatedData.estado}${validatedData.observaciones ? `. ${validatedData.observaciones}` : ""}`,
+            },
+          })
+
+          // Auto-cambio estado del equipo
+          await actualizarEstadoEquipo(tx, existingMantenimiento.equipoId, validatedData.estado)
+        }
+
+        return mantenimiento
+      })
+
+      return NextResponse.json(result)
+    }
+
+    // ADMIN y CLIENTE: edición completa
+    const validatedData = updateMantenimientoSchema.parse(body)
 
     // Preparar datos para actualizar
     const updateData: any = {}
@@ -157,7 +239,7 @@ export async function PUT(
     // Actualizar en transacción con historial
     const result = await prisma.$transaction(async (tx) => {
       const mantenimiento = await tx.mantenimiento.update({
-        where: { id: params.id },
+        where: { id },
         data: updateData,
         include: {
           equipo: {
@@ -189,11 +271,14 @@ export async function PUT(
         await tx.historial.create({
           data: {
             equipoId: existingMantenimiento.equipoId,
-            mantenimientoId: params.id,
+            mantenimientoId: id,
             tecnicoId: session.user.id,
             observaciones: `Estado cambiado a: ${validatedData.estado}${validatedData.observaciones ? `. ${validatedData.observaciones}` : ""}`,
           },
         })
+
+        // Auto-cambio estado del equipo
+        await actualizarEstadoEquipo(tx, existingMantenimiento.equipoId, validatedData.estado)
       }
 
       return mantenimiento
@@ -219,7 +304,7 @@ export async function PUT(
 // DELETE /api/mantenimientos/[id] - Eliminar mantenimiento
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -233,9 +318,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 })
     }
 
+    const { id } = await params
+
     // Verificar que el mantenimiento existe
     const mantenimiento = await prisma.mantenimiento.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!mantenimiento) {
@@ -247,7 +334,7 @@ export async function DELETE(
 
     // Eliminar (el historial se eliminará en cascada o se mantendrá según el schema)
     await prisma.mantenimiento.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: "Mantenimiento eliminado exitosamente" })

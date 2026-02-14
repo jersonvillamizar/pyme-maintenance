@@ -331,7 +331,8 @@ export default function UsuariosPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Usuario Creado Exitosamente</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
+            <AlertDialogDescription asChild>
+              <div className="text-muted-foreground text-sm space-y-4">
               <p>Se ha creado el usuario con la siguiente información:</p>
               <div className="rounded-lg bg-muted p-4 space-y-2">
                 <div>
@@ -359,8 +360,9 @@ export default function UsuariosPage() {
                 </div>
               </div>
               <p className="text-sm text-destructive">
-                ⚠️ Guarda esta contraseña ahora. No podrás verla nuevamente.
+                Guarda esta contraseña ahora. No podrás verla nuevamente.
               </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

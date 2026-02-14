@@ -105,7 +105,8 @@ pyme-maintenance/
 │   │   │   ├── alertas/           # ✅ Sistema de Alertas
 │   │   │   └── reportes/          # 🚧 Pendiente
 │   │   ├── api/                   # API Routes
-│   │   │   ├── auth/              # NextAuth endpoints
+│   │   │   ├── auth/              # NextAuth + forgot/reset password
+│   │   │   ├── contact/           # API formulario de contacto
 │   │   │   ├── empresas/          # API Empresas
 │   │   │   ├── equipos/           # API Equipos
 │   │   │   ├── usuarios/          # API Usuarios
@@ -113,6 +114,9 @@ pyme-maintenance/
 │   │   │   ├── alertas/           # API Alertas
 │   │   │   └── dashboard/         # API Dashboard stats
 │   │   ├── login/                 # ✅ Página de login
+│   │   ├── forgot-password/       # ✅ Restablecer contraseña
+│   │   ├── reset-password/        # ✅ Nueva contraseña (desde email)
+│   │   ├── contact/               # ✅ Contactar administrador
 │   │   ├── layout.tsx
 │   │   └── globals.css
 │   ├── components/                # Componentes React
@@ -123,6 +127,7 @@ pyme-maintenance/
 │   ├── lib/                       # Utilidades y configs
 │   │   ├── prisma.ts              # Cliente Prisma singleton
 │   │   ├── auth.ts                # Configuración NextAuth
+│   │   ├── email.ts               # Servicio de envío de correos (Gmail SMTP)
 │   │   └── utils.ts               # Utilidades (cn, formatters)
 │   ├── types/                     # TypeScript types
 │   │   └── next-auth.d.ts         # Extensión de tipos NextAuth
@@ -267,16 +272,39 @@ export async function POST(request: NextRequest) {
 # Database
 DATABASE_URL="postgresql://postgres:admin123@127.0.0.1:5432/pyme_maintenance?schema=public"
 
-# NextAuth (agregar después)
+# NextAuth
 NEXTAUTH_SECRET="your-secret-here"
 NEXTAUTH_URL="http://localhost:3000"
 
-# Email (agregar después si se usa)
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT="587"
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-password"
+# Email (Gmail SMTP)
+SMTP_USER="correoadmin@gmail.com"
+SMTP_PASS="abcd efgh ijkl mnop"
+ADMIN_EMAIL="correoadmin@gmail.com"
 ```
+
+### Configuración de Email (Gmail SMTP)
+
+El sistema usa Gmail SMTP para enviar correos (reset de contraseña y formulario de contacto). Para configurarlo:
+
+1. **Activar verificación en 2 pasos** en la cuenta Gmail que enviará los correos:
+   - Ir a [myaccount.google.com/security](https://myaccount.google.com/security)
+   - Activar "Verificación en 2 pasos"
+
+2. **Crear una contraseña de aplicación**:
+   - Ir a [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+   - Crear una nueva contraseña de aplicación (nombre: "MantenPro")
+   - Copiar el código de 16 letras que se genera
+
+3. **Configurar las variables de entorno** en el archivo `.env`:
+   - `SMTP_USER`: La cuenta Gmail que enviará los correos (ej: `correoadmin@gmail.com`)
+   - `SMTP_PASS`: La contraseña de aplicación generada en el paso 2 (NO la contraseña normal de Gmail)
+   - `ADMIN_EMAIL`: El correo donde llegarán los mensajes del formulario de contacto
+
+**Notas:**
+- Para cambiar la cuenta que envía correos, solo se necesita repetir los pasos 1-3 con la nueva cuenta y actualizar `SMTP_USER` y `SMTP_PASS`
+- `ADMIN_EMAIL` puede ser cualquier correo (no requiere configuración especial), es solo el destinatario
+- Gmail permite hasta ~500 correos/día, suficiente para este sistema
+- En producción, actualizar `NEXTAUTH_URL` con la URL del servidor (para que los enlaces de reset funcionen)
 
 ## Testing (Próximamente)
 

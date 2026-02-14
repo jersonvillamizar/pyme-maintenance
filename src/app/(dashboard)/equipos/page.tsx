@@ -413,6 +413,7 @@ export default function EquiposPage() {
         onSubmit={editingEquipo ? handleUpdate : handleCreate}
         isLoading={isSubmitting}
         isCliente={isCliente}
+        clienteEmpresaId={isCliente ? session?.user?.empresaId : undefined}
       />
     </>
   )

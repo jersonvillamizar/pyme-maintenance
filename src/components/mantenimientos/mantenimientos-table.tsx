@@ -1,6 +1,6 @@
 "use client"
 
-import { MoreHorizontal, Wrench, Calendar, User, Building2, FileText, AlertTriangle, Clock, Eye } from "lucide-react"
+import { MoreHorizontal, Wrench, Calendar, User, Building2, FileText, AlertTriangle, Clock, Eye, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Link from "next/link"
@@ -39,12 +39,14 @@ import {
 } from "@/components/ui/tooltip"
 import { useState } from "react"
 import { MantenimientoDetail } from "./mantenimiento-detail"
+import { CambiarEstadoDialog } from "./cambiar-estado-dialog"
 
 
 interface MantenimientosTableProps {
   mantenimientos: Mantenimiento[]
   onEdit: (mantenimiento: Mantenimiento) => void
   onDelete: (id: string) => void
+  onRefresh?: () => void
   userRole?: "ADMIN" | "TECNICO" | "CLIENTE"
 }
 
@@ -93,14 +95,19 @@ export function MantenimientosTable({
   mantenimientos,
   onEdit,
   onDelete,
+  onRefresh,
   userRole = "CLIENTE"
 }: MantenimientosTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [detailMantenimiento, setDetailMantenimiento] = useState<Mantenimiento | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [cambiarEstadoId, setCambiarEstadoId] = useState<string | null>(null)
+  const [cambiarEstadoActual, setCambiarEstadoActual] = useState<string>("")
+  const [cambiarEstadoOpen, setCambiarEstadoOpen] = useState(false)
 
-  const canEdit = userRole === "ADMIN"
+  const canEdit = userRole === "ADMIN" || userRole === "CLIENTE"
   const canDelete = userRole === "ADMIN"
+  const canChangeEstado = userRole === "TECNICO"
 
   const handleDeleteClick = (id: string) => {
     setDeleteId(id)
@@ -116,6 +123,12 @@ export function MantenimientosTable({
   const handleViewDetail = (mantenimiento: Mantenimiento) => {
     setDetailMantenimiento(mantenimiento)
     setDetailOpen(true)
+  }
+
+  const handleChangeEstado = (mantenimiento: Mantenimiento) => {
+    setCambiarEstadoId(mantenimiento.id)
+    setCambiarEstadoActual(mantenimiento.estado)
+    setCambiarEstadoOpen(true)
   }
 
   if (mantenimientos.length === 0) {
@@ -279,7 +292,13 @@ export function MantenimientosTable({
                         <Eye className="mr-2 h-4 w-4" />
                         Ver detalles
                       </DropdownMenuItem>
-                      {(canEdit || canDelete) && <DropdownMenuSeparator />}
+                      {(canEdit || canDelete || canChangeEstado) && <DropdownMenuSeparator />}
+                      {canChangeEstado && (
+                        <DropdownMenuItem onClick={() => handleChangeEstado(mantenimiento)}>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Cambiar estado
+                        </DropdownMenuItem>
+                      )}
                       {canEdit && (
                         <DropdownMenuItem onClick={() => onEdit(mantenimiento)}>
                           Editar
@@ -324,6 +343,14 @@ export function MantenimientosTable({
         mantenimiento={detailMantenimiento}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+      />
+
+      <CambiarEstadoDialog
+        mantenimientoId={cambiarEstadoId}
+        estadoActual={cambiarEstadoActual}
+        open={cambiarEstadoOpen}
+        onOpenChange={setCambiarEstadoOpen}
+        onSuccess={() => onRefresh?.()}
       />
     </>
   )

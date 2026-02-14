@@ -6,6 +6,14 @@ export default withAuth(
     const token = req.nextauth.token
     const isAuth = !!token
     const isAuthPage = req.nextUrl.pathname.startsWith("/login")
+    const isPublicPage =
+      req.nextUrl.pathname.startsWith("/forgot-password") ||
+      req.nextUrl.pathname.startsWith("/reset-password") ||
+      req.nextUrl.pathname.startsWith("/contact")
+
+    if (isPublicPage) {
+      return null
+    }
 
     if (isAuthPage) {
       if (isAuth) {

@@ -240,6 +240,12 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      // Cambiar estado del equipo a EN_MANTENIMIENTO
+      await tx.equipo.update({
+        where: { id: validatedData.equipoId },
+        data: { estado: "EN_MANTENIMIENTO" },
+      })
+
       return mantenimiento
     })
 
